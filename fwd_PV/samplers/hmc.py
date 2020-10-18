@@ -1,4 +1,5 @@
 import numpy as np
+import jax.numpy as jnp
 from scipy.linalg import sqrtm
 
 from . import mcmc_helper as helper
@@ -59,7 +60,7 @@ class HMCSampler(object):
             self._chain[i, :] = x_old
             self._posterior[i] = lnprob
 
-    def sample_one_step(self, x_old, time_step, N_LEAPFROG, higher_order_leapfrog=False, psi_kwargs=None, grad_psi_kwargs=None, complex_momentum=False):
+    def sample_one_step(self, x_old, time_step, N_LEAPFROG, higher_order_leapfrog=False, psi_kwargs=None, grad_psi_kwargs=None):
         """
         A function to run one step of HMC
         """
@@ -67,13 +68,14 @@ class HMCSampler(object):
             self.psi_kwargs=psi_kwargs
         if(grad_psi_kwargs is not None):
             self.grad_psi_kwargs=grad_psi_kwargs
-        p_old = np.random.normal(np.zeros(self.ndim), np.sqrt(self.Hamiltonian_mass))
+        p = np.random.normal(np.zeros(self.ndim), np.sqrt(self.Hamiltonian_mass))
 
         phi = np.random.uniform(0., 2 * np.pi, size=self.ndim)
         J = np.complex(0,1)
         complex_p = np.cos(phi) + np.sin(phi) * J
-        p_old = p_old * complex_p
-        H_old = self.Hamiltonian(x_old, p_old)
+        p = p * complex_p
+        p = jnp.array(p)
+        H_old = self.Hamiltonian(x_old, p)
 
         dt = np.random.uniform(0, time_step)
         N = np.random.randint(1,N_LEAPFROG)
@@ -81,16 +83,13 @@ class HMCSampler(object):
         if(self.verbose):
             print("dt: %2.3f, N:%d"%(dt, N))
 
-        x_proposed, p_proposed = self.leapfrog(x_old, p_old, dt, N)
-        if(higher_order_leapfrog):
-            s = (2. * N)**(1./3)
-            x_proposed, p_proposed = self.leapfrog(x_proposed, p_proposed, -s * dt, 1)
-            x_proposed, p_proposed = self.leapfrog(x_proposed, p_proposed, dt, N)
+        x_proposed, p_proposed = self.leapfrog(x_old, p, dt, N)
 
         H_proposed = self.Hamiltonian(x_proposed, p_proposed)
 
         diff = H_proposed-H_old
 
+        print("diff: %2.3f"%(diff))
         accepted = False
         if(diff < 0.0):
             x_old = x_proposed

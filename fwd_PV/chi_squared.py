@@ -1,5 +1,4 @@
 import numpy as np
-import jax.numpy as jnp
 from .tools.cosmo import z_cos, speed_of_light
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -16,26 +15,38 @@ class ChiSquared(ForwardModelledVelocityBox):
         self.z_cos = z_cos(r_hMpc, self.OmegaM)
         self.indices = ((self.cartesian_pos +  self.L_BOX/2.) / self.l).astype(int)
         self.sig_v = 150.
-        self.interpolate = interpolate
-        if(self.interpolate):
-            self.xyz_d = (self.cartesian_pos +  self.L_BOX/2.) / self.l - self.indices
         
     def log_lkl(self, delta_k):
         V_r = self.Vr_grid(delta_k)
-        if(self.interpolate):
-            V_r_tracers = self.V_interpolate(V_r)
-        else:
-            V_r_tracers = V_r[self.indices[0], self.indices[1], self.indices[2]]
+        V_r_tracers = V_r[self.indices[0], self.indices[1], self.indices[2]]
         cz_pred = speed_of_light * self.z_cos + V_r_tracers * (1. + self.z_cos)
-        return jnp.sum(0.5 * (self.cz_obs - cz_pred)**2 / self.sig_v / self.sig_v)
+        return np.sum(0.5 * (self.cz_obs - cz_pred)**2 / self.sig_v / self.sig_v)
     
-    def V_interpolate(self, V_r):
-        c00 = (1. - self.xyz_d[0]) * V_r[self.indices[0], self.indices[1], self.indices[2]] + self.xyz_d[0] * V_r[self.indices[0]+1, self.indices[1], self.indices[2]]
-        c01 = (1. - self.xyz_d[0]) * V_r[self.indices[0], self.indices[1], self.indices[2]+1] + self.xyz_d[0] * V_r[self.indices[0]+1, self.indices[1], self.indices[2]+1]
-        c10 = (1. - self.xyz_d[0]) * V_r[self.indices[0], self.indices[1]+1, self.indices[2]] + self.xyz_d[0] * V_r[self.indices[0]+1, self.indices[1]+1, self.indices[2]]
-        c11 = (1. - self.xyz_d[0]) * V_r[self.indices[0], self.indices[1]+1, self.indices[2]+1] + self.xyz_d[0] * V_r[self.indices[0]+1, self.indices[1]+1, self.indices[2]+1]
+    def grad_lkl(self, delta_k):
+        V_r = self.Vr_grid(delta_k)
+        V_r_tracers = V_r[self.indices[0], self.indices[1], self.indices[2]]
+        cz_pred = speed_of_light * self.z_cos + V_r_tracers * (1. + self.z_cos)
         
-        c0 = (1. - self.xyz_d[1]) * c00 + self.xyz_d[1] * c01
-        c1 = (1. - self.xyz_d[1]) * c10 + self.xyz_d[1] * c11
+        delta_cz = (self.cz_obs - cz_pred)
         
-        return (1. - self.xyz_d[2]) * c0 + self.xyz_d[2] * c1
+        A_x = np.zeros(V_r.shape)
+        A_y = np.zeros(V_r.shape)
+        A_z = np.zeros(V_r.shape)
+        
+        A = delta_cz / self.sig_v / self.sig_v * (1. + self.z_cos)
+        
+        A_x[self.indices[0], self.indices[1], self.indices[2]] += A * self.r_hat[0]
+        A_y[self.indices[0], self.indices[1], self.indices[2]] += A * self.r_hat[1]
+        A_z[self.indices[0], self.indices[1], self.indices[2]] += A * self.r_hat[2]
+        
+        B = self.J * 100. * self.f / self.V / self.k_norm / self.k_norm
+
+        A_k_x = 2. * B * self.k[0] * np.fft.rfftn(A_x)
+        A_k_y = 2. * B * self.k[1] * np.fft.rfftn(A_y)
+        A_k_z = 2. * B * self.k[2] * np.fft.rfftn(A_z)
+        
+        grad = A_k_x + A_k_y + A_k_z
+
+        return np.array([grad.real, grad.imag])
+         
+        

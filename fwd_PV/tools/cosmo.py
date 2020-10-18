@@ -1,4 +1,6 @@
 import numpy as np
+import camb
+from camb import model, initialpower
 
 speed_of_light = 299792
 
@@ -16,3 +18,20 @@ def r2mu(r):
 
 def mu2r(mu):
     return 10**((mu - 25.)/5.)
+
+def camb_PS():
+    print("Calculating CAMB power spectrum....")
+    pars = camb.CAMBparams()
+    pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122)
+    pars.InitPower.set_params(ns=0.965)
+    
+    pars.set_matter_power(redshifts=[0.], kmax=2.0)
+
+    results = camb.get_results(pars)
+
+    #Non-Linear spectra (Halofit)
+    pars.NonLinear = model.NonLinear_both
+    results.calc_power_spectra(pars)
+    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-2, maxkh=5, npoints = 2000)
+    
+    return kh, pk[0]
