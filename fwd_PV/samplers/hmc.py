@@ -1,5 +1,4 @@
 import numpy as np
-import jax.numpy as jnp
 from scipy.linalg import sqrtm
 
 from . import mcmc_helper as helper
@@ -69,12 +68,7 @@ class HMCSampler(object):
         if(grad_psi_kwargs is not None):
             self.grad_psi_kwargs=grad_psi_kwargs
         p = np.random.normal(np.zeros(self.ndim), np.sqrt(self.Hamiltonian_mass))
-
-        phi = np.random.uniform(0., 2 * np.pi, size=self.ndim)
-        J = np.complex(0,1)
-        complex_p = np.cos(phi) + np.sin(phi) * J
-        p = p * complex_p
-        p = jnp.array(p)
+        p[:, 0, 0, 0] = 0.
         H_old = self.Hamiltonian(x_old, p)
 
         dt = np.random.uniform(0, time_step)
@@ -157,7 +151,11 @@ class HMCSampler(object):
         :param p: The set of momenta
         """
         M = self.Hamiltonian_mass
-        H = np.sum(0.5* np.abs(p)**2 /M) + self.get_psi(x)
+        KE = np.sum(0.5* np.abs(p)**2 / M)
+        PE = self.get_psi(x)
+        print("KE: %2.4f"%(KE))
+        print("PE: %2.4f"%(PE))
+        H = KE + PE 
         return H
 
     def get_psi(self, x):

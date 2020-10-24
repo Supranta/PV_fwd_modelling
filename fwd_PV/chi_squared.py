@@ -39,14 +39,16 @@ class ChiSquared(ForwardModelledVelocityBox):
         A_y[self.indices[0], self.indices[1], self.indices[2]] += A * self.r_hat[1]
         A_z[self.indices[0], self.indices[1], self.indices[2]] += A * self.r_hat[2]
         
-        B = self.J * 100. * self.f / self.V / self.k_norm / self.k_norm
-
+        B = self.J * 100. * self.f / self.k_norm / self.k_norm
+        
         A_k_x = 2. * B * self.k[0] * np.fft.rfftn(A_x)
         A_k_y = 2. * B * self.k[1] * np.fft.rfftn(A_y)
         A_k_z = 2. * B * self.k[2] * np.fft.rfftn(A_z)
         
         grad = A_k_x + A_k_y + A_k_z
-
+        
+        grad[0, 0, 0] = np.complex(0., 0.)
+        
         return np.array([grad.real, grad.imag])
          
         
