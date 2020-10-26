@@ -24,16 +24,16 @@ class ForwardModelledVelocityBox:
         k_abs = np.array(self.k_norm)
         Pk_3d = 1e-20 * np.ones(k_abs.shape)
         select_positive_k = (k_abs > 1e-10)
-        Pk_3d[select_positive_k] = self.Pk_interp(k_abs[select_positive_k])
+        #Pk_3d[select_positive_k] = self.Pk_interp(k_abs[select_positive_k])
+        Pk_3d[select_positive_k] = 1000.
         return Pk_3d
 
     def generate_delta_k(self):
-        delta_k = np.random.normal(0., np.sqrt(self.Pk_3d / self.V))
-        delta_k[0,0,0] = 0.
-        phi = np.random.uniform(0., 1., size=delta_k.shape)
+        delta_k_real = np.random.normal(0., np.sqrt(self.Pk_3d / self.V / 2))
+        delta_k_imag = np.random.normal(0., np.sqrt(self.Pk_3d / self.V / 2))
         
-        delta_k_real = delta_k * np.cos(phi)
-        delta_k_imag = delta_k * np.sin(phi)
+        delta_k_real[0,0,0] = 0.
+        delta_k_imag[0,0,0] = 0. 
         
         return np.array([delta_k_real, delta_k_imag])
 
@@ -53,13 +53,13 @@ class ForwardModelledVelocityBox:
         return np.sum(V * self.r_hat_grid, axis=0)
 
     def log_prior(self, delta_k):
-        delta_k_var = self.Pk_3d / self.V
+        delta_k_var = self.Pk_3d / self.V / 2.
         ln_prior = np.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)
         print("log-prior per mode: %2.5f"%(2*ln_prior / len(delta_k.flatten())))
         return ln_prior
     
     def grad_prior(self, delta_k):
-        delta_k_var = self.Pk_3d / self.V
+        delta_k_var = self.Pk_3d / self.V / 2.
         grad_real = delta_k[0]  / delta_k_var
         grad_imag = delta_k[1]  / delta_k_var
         return np.array([grad_real, grad_imag])
