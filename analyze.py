@@ -15,20 +15,19 @@ kh, pk = camb_PS()
 
 _, k_abs = Fourier_ks(N_BOX, l)
 
-k_bins = np.logspace(np.log10(pi / L / 2.), np.log10(2*pi * N_BOX / L), 41)
+k_bins = np.logspace(np.log10(pi / L), np.log10(2*pi * N_BOX / L), 51)
 k_bincentre = np.sqrt(k_bins[1:]*k_bins[:-1])
 
 J = np.complex(0., 1.)
 
 def measure_Pk(delta_k, k_norm, k_bins):
-    delta_k_complex = delta_k[0] + J * delta_k[1]
     Pk_sample = []
     for i in range(len(k_bins)-1):
         select_k = (k_norm > k_bins[i])&(k_norm < k_bins[i+1])
         if(np.sum(select_k) < 1):
             Pk_sample.append(0.)
         else:
-            Pk_sample.append(np.mean(np.abs(delta_k_complex[select_k]))**2 * V)
+            Pk_sample.append(np.mean(delta_k[0,select_k]**2 + delta_k[1,select_k]**2) * V)
     return np.array(Pk_sample)
 
 def measure_phase(delta_k, k_norm, k_bins):
@@ -57,7 +56,7 @@ Pk_measured_list = []
 phase1_list = []
 phase2_list = []
 
-for i in range(200, 400):
+for i in range(150, 400):
     print("Reading mcmc_"+str(i)+".h5")
     f = h5.File(savedir + '/mcmc_'+str(i)+'.h5', 'r')
     delta_k = f['delta_k'][:]
@@ -77,8 +76,9 @@ Pk_measured_high = np.percentile(Pk_measured, 84., axis=0)
 
 plt.semilogx(k_bincentre, Pk_measured_mean, color='b')
 plt.fill_between(k_bincentre, Pk_measured_low, Pk_measured_high, color='b', alpha=0.3)
-plt.axhline(1000., color='k')
-#plt.loglog(kh, pk, 'k', label='CAMB')
+#plt.axhline(1000., color='k')
+plt.loglog(kh, pk, 'k', label='CAMB')
+plt.legend()
 plt.savefig(savedir+'/figs/Pk_samples.png', dpi=150)
 plt.close()
 

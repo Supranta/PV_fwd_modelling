@@ -24,8 +24,7 @@ class ForwardModelledVelocityBox:
         k_abs = np.array(self.k_norm)
         Pk_3d = 1e-20 * np.ones(k_abs.shape)
         select_positive_k = (k_abs > 1e-10)
-        #Pk_3d[select_positive_k] = self.Pk_interp(k_abs[select_positive_k])
-        Pk_3d[select_positive_k] = 1000.
+        Pk_3d[select_positive_k] = self.Pk_interp(k_abs[select_positive_k])
         return Pk_3d
 
     def generate_delta_k(self):
@@ -62,6 +61,8 @@ class ForwardModelledVelocityBox:
         delta_k_var = self.Pk_3d / self.V / 2.
         grad_real = delta_k[0]  / delta_k_var
         grad_imag = delta_k[1]  / delta_k_var
+        grad_real[0, 0, 0] = 0.
+        grad_imag[0, 0, 0] = 0.
         return np.array([grad_real, grad_imag])
 
     def lkl(self, delta_k):
