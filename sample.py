@@ -6,15 +6,17 @@ from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.tools.cosmo import camb_PS
 from fwd_PV.io import process_datafile
 
-N_BOX = 128
+N_BOX = 64
 L_BOX = 400.
 
-dt = 0.001
-N = 5
+N_MCMC = 2000
+
+dt = 0.07
+N = 10
 
 datafile = 'data/VELMASS_mocks/mock_unique.csv'
-savedir = 'fwd_PV_runs/velmass_mock_unique'
-N_SAVE = 2
+savedir = 'fwd_PV_runs/sample_prior'
+N_SAVE = 5
 
 r_hMpc, RA, DEC, z_obs = process_datafile(datafile)
 
@@ -24,12 +26,12 @@ ChiSquaredBox = ChiSquared(N_BOX, L_BOX, kh, pk, r_hMpc, RA, DEC, z_obs, interpo
 delta_k = 0.1 * ChiSquaredBox.generate_delta_k()
 
 mass_matrix = np.array([ChiSquaredBox.V / ChiSquaredBox.Pk_3d, ChiSquaredBox.V / ChiSquaredBox.Pk_3d])
-sampler = HMCSampler(delta_k.shape, ChiSquaredBox.psi, ChiSquaredBox.grad_psi, mass_matrix, verbose=True)
+sampler = HMCSampler(delta_k.shape, ChiSquaredBox.log_prior, ChiSquaredBox.grad_prior, mass_matrix, verbose=True)
 accepted = 0
 
 dt = dt
 
-for i in range(10):
+for i in range(N_MCMC):
     delta_k, ln_prob, acc = sampler.sample_one_step(delta_k, dt, N)
     print("ln_prob: %2.4f"%(ln_prob))
     if(acc):

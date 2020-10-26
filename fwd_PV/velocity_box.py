@@ -54,8 +54,10 @@ class ForwardModelledVelocityBox:
 
     def log_prior(self, delta_k):
         delta_k_var = self.Pk_3d / self.V
-        return np.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)
-
+        ln_prior = np.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)
+        print("log-prior per mode: %2.5f"%(2*ln_prior / len(delta_k.flatten())))
+        return ln_prior
+    
     def grad_prior(self, delta_k):
         delta_k_var = self.Pk_3d / self.V
         grad_real = delta_k[0]  / delta_k_var

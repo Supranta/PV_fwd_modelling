@@ -14,13 +14,15 @@ class ChiSquared(ForwardModelledVelocityBox):
         self.cartesian_pos = r_hMpc * r_hat
         self.z_cos = z_cos(r_hMpc, self.OmegaM)
         self.indices = ((self.cartesian_pos +  self.L_BOX/2.) / self.l).astype(int)
-        self.sig_v = 150.
+        self.sig_v = 250.
         
     def log_lkl(self, delta_k):
         V_r = self.Vr_grid(delta_k)
         V_r_tracers = V_r[self.indices[0], self.indices[1], self.indices[2]]
         cz_pred = speed_of_light * self.z_cos + V_r_tracers * (1. + self.z_cos)
-        return np.sum(0.5 * (self.cz_obs - cz_pred)**2 / self.sig_v / self.sig_v)
+        lkl = np.sum(0.5 * (self.cz_obs - cz_pred)**2 / self.sig_v / self.sig_v)
+        print("chi-squared per object: %2.4f"%(2*lkl/len(self.cz_obs)))
+        return lkl
     
     def grad_lkl(self, delta_k):
         V_r = self.Vr_grid(delta_k)
