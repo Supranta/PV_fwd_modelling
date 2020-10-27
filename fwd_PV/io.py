@@ -13,8 +13,9 @@ def process_datafile(datafile, filetype='csv'):
     elif(filetype=='h5'):
         with h5.File(datafile, 'r') as f:
             r_hMpc = f['r_hMpc'][:]
+            e_r_hMpc = f['r_hMpc'][:]
             RA     = f['RA'][:]
             DEC    = f['DEC'][:]
             z_obs  = f['z_obs'][:]
 
-    return r_hMpc, RA, DEC, z_obs
+    return r_hMpc, e_r_hMpc, RA, DEC, z_obs

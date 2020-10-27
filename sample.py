@@ -22,11 +22,11 @@ datafile = 'data/synth_data/mock1.h5'
 savedir = 'fwd_PV_runs/synth_data'
 N_SAVE = 5
 
-r_hMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
+r_hMpc, e_rhMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
 
 kh, pk = camb_PS()
 
-ChiSquaredBox = ChiSquared(N_BOX, L_BOX, kh, pk, r_hMpc, RA, DEC, z_obs, interpolate=False)
+ChiSquaredBox = ChiSquared(N_BOX, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, interpolate=False)
 
 if(restart_flag=='INIT'):
     delta_k = 0.1 * ChiSquaredBox.generate_delta_k()
