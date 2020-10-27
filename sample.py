@@ -5,35 +5,29 @@ import h5py as h5
 from fwd_PV.chi_squared import ChiSquared
 from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.tools.cosmo import camb_PS
-from fwd_PV.io import process_datafile
+from fwd_PV.io import process_datafile, process_config
 
 restart_flag = sys.argv[1]
 assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1st command line argument) must be either INIT or RESUME"
 
-N_BOX = 64
-L_BOX = 500.
+configfile = sys.argv[2]
 
-N_MCMC = 2000
-
-dt = 0.01
-N = 5
-
-datafile = 'data/synth_data/mock1.h5'
-savedir = 'fwd_PV_runs/synth_data'
-N_SAVE = 5
+N_GRID, L_BOX,\
+        N_MCMC, dt, N_LEAPFROG,\
+        datafile, savedir, N_SAVE, N_RESTART= process_config(configfile)
 
 r_hMpc, e_rhMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
 
 kh, pk = camb_PS()
 
-ChiSquaredBox = ChiSquared(N_BOX, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, interpolate=False)
+ChiSquaredBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, interpolate=False)
 
 if(restart_flag=='INIT'):
     delta_k = 0.1 * ChiSquaredBox.generate_delta_k()
     N_START = 0
 elif(restart_flag=='RESUME'):
     print("Restarting run....")
-    f_restart = h5.File(save_dir+'/restart.h5', 'r')
+    f_restart = h5.File(savedir+'/restart.h5', 'r')
     N_START = f_restart['N_STEP'].value
     delta_k = f_restart['delta_k'][:]
     f_restart.close()
@@ -45,7 +39,7 @@ accepted = 0
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
-    delta_k, ln_prob, acc = sampler.sample_one_step(delta_k, dt, N)
+    delta_k, ln_prob, acc = sampler.sample_one_step(delta_k, dt, N_LEAPFROG)
     print("ln_prob: %2.4f"%(ln_prob))
     if(acc):
         print("Accepted")
@@ -64,7 +58,7 @@ for i in range(N_START, N_START + N_MCMC):
         f.close()
     if(i%N_RESTART==0):
         print("Saving restart file...")
-        f = h5.File(save_dir+'/restart.h5', 'w')
+        f = h5.File(savedir+'/restart.h5', 'w')
         f['delta_k'] = delta_k
         f['N_STEP'] = i
         f.close()

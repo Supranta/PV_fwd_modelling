@@ -3,11 +3,15 @@ import matplotlib.pyplot as plt
 import h5py as h5
 from fwd_PV.tools.fft import Fourier_ks
 from fwd_PV.tools.cosmo import camb_PS
+from fwd_PV.io import process_config
 from math import pi
+import sys
 
-savedir = 'fwd_PV_runs/sample_prior'
-N_BOX = 64
-L = 500.
+configfile = sys.argv[1]
+
+N_BOX, L, _, _, _,\
+        datafile, savedir, _, _= process_config(configfile)
+
 l = L / N_BOX
 V = L**3
 
@@ -15,7 +19,7 @@ kh, pk = camb_PS()
 
 _, k_abs = Fourier_ks(N_BOX, l)
 
-k_bins = np.logspace(np.log10(pi / L), np.log10(2*pi * N_BOX / L), 51)
+k_bins = np.logspace(np.log10(2 * pi / L), np.log10(2*pi * N_BOX / L), 41)
 k_bincentre = np.sqrt(k_bins[1:]*k_bins[:-1])
 
 J = np.complex(0., 1.)
@@ -74,7 +78,9 @@ Pk_measured_mean = np.mean(Pk_measured, axis=0)
 Pk_measured_low  = np.percentile(Pk_measured, 16., axis=0)
 Pk_measured_high = np.percentile(Pk_measured, 84., axis=0)
 
-plt.semilogx(k_bincentre, Pk_measured_mean, color='b')
+plt.ylim(3.0e+2, 4.0e+4)
+plt.xlim(1.e-2, 1.)
+plt.loglog(k_bincentre, Pk_measured_mean, color='b')
 plt.fill_between(k_bincentre, Pk_measured_low, Pk_measured_high, color='b', alpha=0.3)
 #plt.axhline(1000., color='k')
 plt.loglog(kh, pk, 'k', label='CAMB')
