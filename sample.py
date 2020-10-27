@@ -18,7 +18,7 @@ datafile = 'data/VELMASS_mocks/mock_unique.csv'
 savedir = 'fwd_PV_runs/sample_prior'
 N_SAVE = 5
 
-r_hMpc, RA, DEC, z_obs = process_datafile(datafile)
+r_hMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
 
 kh, pk = camb_PS()
 
