@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import h5py as h5
 
 def process_datafile(datafile, filetype='csv'):
     if(filetype=='csv'):

@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import h5py as h5
 
@@ -6,16 +7,19 @@ from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.tools.cosmo import camb_PS
 from fwd_PV.io import process_datafile
 
+restart_flag = sys.argv[1]
+assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1st command line argument) must be either INIT or RESUME"
+
 N_BOX = 64
 L_BOX = 500.
 
 N_MCMC = 2000
 
-dt = 0.05
-N = 10
+dt = 0.01
+N = 5
 
-datafile = 'data/VELMASS_mocks/mock_unique.csv'
-savedir = 'fwd_PV_runs/sample_prior'
+datafile = 'data/synth_data/mock1.h5'
+savedir = 'fwd_PV_runs/synth_data'
 N_SAVE = 5
 
 r_hMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
@@ -23,22 +27,31 @@ r_hMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
 kh, pk = camb_PS()
 
 ChiSquaredBox = ChiSquared(N_BOX, L_BOX, kh, pk, r_hMpc, RA, DEC, z_obs, interpolate=False)
-delta_k = 0.1 * ChiSquaredBox.generate_delta_k()
+
+if(restart_flag=='INIT'):
+    delta_k = 0.1 * ChiSquaredBox.generate_delta_k()
+    N_START = 0
+elif(restart_flag=='RESUME'):
+    print("Restarting run....")
+    f_restart = h5.File(save_dir+'/restart.h5', 'r')
+    N_START = f_restart['N_STEP'].value
+    delta_k = f_restart['delta_k'][:]
+    f_restart.close()
 
 mass_matrix = np.array([2. * ChiSquaredBox.V / ChiSquaredBox.Pk_3d, 2. * ChiSquaredBox.V / ChiSquaredBox.Pk_3d])
-sampler = HMCSampler(delta_k.shape, ChiSquaredBox.log_prior, ChiSquaredBox.grad_prior, mass_matrix, verbose=True)
+sampler = HMCSampler(delta_k.shape, ChiSquaredBox.psi, ChiSquaredBox.grad_psi, mass_matrix, verbose=True)
 accepted = 0
 
 dt = dt
 
-for i in range(N_MCMC):
+for i in range(N_START, N_START + N_MCMC):
     delta_k, ln_prob, acc = sampler.sample_one_step(delta_k, dt, N)
     print("ln_prob: %2.4f"%(ln_prob))
     if(acc):
         print("Accepted")
         accepted += 1
 
-    acceptance_rate = accepted / (i + 1)
+    acceptance_rate = accepted / (i - N_START + 1)
     print("Current acceptance rate: %2.3f"%(acceptance_rate))
     if(i%N_SAVE==0):
         print('=============')
@@ -48,4 +61,10 @@ for i in range(N_MCMC):
         f = h5.File(savedir + '/mcmc_'+str(j)+'.h5', 'w')
         f['delta_k'] = delta_k
         f['ln_prob'] = ln_prob
+        f.close()
+    if(i%N_RESTART==0):
+        print("Saving restart file...")
+        f = h5.File(save_dir+'/restart.h5', 'w')
+        f['delta_k'] = delta_k
+        f['N_STEP'] = i
         f.close()
