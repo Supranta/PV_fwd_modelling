@@ -34,6 +34,7 @@ elif(restart_flag=='RESUME'):
 
 mass_matrix = np.array([2. * ChiSquaredBox.V / ChiSquaredBox.Pk_3d, 2. * ChiSquaredBox.V / ChiSquaredBox.Pk_3d])
 sampler = HMCSampler(delta_k.shape, ChiSquaredBox.psi, ChiSquaredBox.grad_psi, mass_matrix, verbose=True)
+
 accepted = 0
 
 dt = dt

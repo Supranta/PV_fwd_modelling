@@ -11,6 +11,7 @@ class ChiSquared(ForwardModelledVelocityBox):
         r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
         self.r_hat = r_hat
         self.sigmad = e_rhMpc * 100.
+        print("Mean sigma_d: %2.4f"%(np.mean(e_rhMpc * 100)))
         self.cz_obs = speed_of_light * z_obs
         self.cartesian_pos = r_hMpc * r_hat
         self.z_cos = z_cos(r_hMpc, self.OmegaM)
