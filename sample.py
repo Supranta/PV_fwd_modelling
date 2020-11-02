@@ -3,27 +3,38 @@ import numpy as np
 import h5py as h5
 
 from fwd_PV.chi_squared import ChiSquared
+from fwd_PV.fwd_lkl import ForwardLikelihoodBox
 from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.tools.cosmo import camb_PS
-from fwd_PV.io import process_datafile, process_config
+from fwd_PV.io import process_datafile, process_config, config_fwd_lkl
 
 restart_flag = sys.argv[1]
 assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1st command line argument) must be either INIT or RESUME"
 
 configfile = sys.argv[2]
 
-N_GRID, L_BOX,\
+N_GRID, L_BOX, likelihood,\
         N_MCMC, dt, N_LEAPFROG,\
         datafile, savedir, N_SAVE, N_RESTART= process_config(configfile)
+
+assert likelihood == 'chi-squared' or likelihood == 'fwd_lkl', "The likelihood must be chi-squared or forward-likelihood."
 
 r_hMpc, e_rhMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
 
 kh, pk = camb_PS()
 
-ChiSquaredBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, interpolate=False)
-
+if(likelihood=='chi-squared'):
+    print("Initializing Chi-Squared Velocity Box....")
+    VelocityBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, interpolate=False)
+elif(likelihood=='fwd_lkl'):
+    print("Initializing fwd_lkl Velocity Box....")
+    PV_data = [r_hMpc, e_rhMpc, RA, DEC, z_obs]
+    MB_data = config_fwd_lkl(configfile)
+    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data)
+    
 if(restart_flag=='INIT'):
-    delta_k = 0.1 * ChiSquaredBox.generate_delta_k()
+    density_scaling = 0.1
+    delta_k = density_scaling * VelocityBox.generate_delta_k()
     N_START = 0
 elif(restart_flag=='RESUME'):
     print("Restarting run....")
@@ -32,8 +43,8 @@ elif(restart_flag=='RESUME'):
     delta_k = f_restart['delta_k'][:]
     f_restart.close()
 
-mass_matrix = np.array([2. * ChiSquaredBox.V / ChiSquaredBox.Pk_3d, 2. * ChiSquaredBox.V / ChiSquaredBox.Pk_3d])
-sampler = HMCSampler(delta_k.shape, ChiSquaredBox.psi, ChiSquaredBox.grad_psi, mass_matrix, verbose=True)
+mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
+sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
 
 accepted = 0
 

@@ -45,9 +45,12 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
     def log_lkl(self, delta_k):
         V_r = self.Vr_grid(delta_k)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
-        cz_pred = speed_of_light * ((1. + self.z_cos) * (1. + Vr_los) - 1.)
+        cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz = (cz_pred - self.cz_obs)
         p_r = np.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
+        if(np.sum(np.isnan(p_r)) > 0):
+            for i in range(20):
+                print("NAN DETECTED")
         return jnp.sum(jnp.log(EPS + jnp.trapz(self.delta_r * p_r * jnp.exp(-0.5 * delta_cz**2 / self.sig_v**2), self.r, axis=0)))
 
     def grad_lkl(self, delta_k):

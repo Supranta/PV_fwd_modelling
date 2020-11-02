@@ -9,6 +9,7 @@ def process_config(configfile):
 
     N_GRID = int(config['BOX']['N_GRID'])
     L_BOX  = float(config['BOX']['L_BOX'])
+    likelihood = config['BOX']['likelihood']
 
     N_MCMC = int(config['MCMC']['N_MCMC'])
     dt     = float(config['MCMC']['dt'])
@@ -19,7 +20,7 @@ def process_config(configfile):
     N_SAVE = int(config['IO']['N_SAVE'])
     N_RESTART = int(config['IO']['N_RESTART'])
 
-    return N_GRID, L_BOX,\
+    return N_GRID, L_BOX, likelihood,\
             N_MCMC, dt, N_LEAPFROG,\
             datafile, savedir, N_SAVE, N_RESTART 
 
@@ -41,3 +42,18 @@ def process_datafile(datafile, filetype='csv'):
             z_obs  = f['z_obs'][:]
 
     return r_hMpc, e_r_hMpc, RA, DEC, z_obs
+
+def config_fwd_lkl(configfile):
+    config = configparser.ConfigParser()
+    config.read(configfile)
+    
+    N_GRID = int(config['FWD_LKL']['N_BOX_sim'])
+    L_BOX  = float(config['FWD_LKL']['L_BOX_sim'])
+    
+    density_data = config['FWD_LKL']['density_file']
+    print("Loading density data from "+density_data)
+    delta_grid = np.load(density_data)
+    
+    return delta_grid, L_BOX, N_GRID
+     
+     
