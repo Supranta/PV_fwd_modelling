@@ -1,4 +1,6 @@
 import numpy as np
+import jax.numpy as jnp
+from jax import grad
 from scipy.interpolate import interp1d
 
 from .tools.fft import grid_r_hat, Fourier_ks
@@ -34,7 +36,7 @@ class ForwardModelledVelocityBox:
         delta_k_real[0,0,0] = 0.
         delta_k_imag[0,0,0] = 0. 
         
-        return np.array([delta_k_real, delta_k_imag])
+        return jnp.array([delta_k_real, delta_k_imag])
 
     def Vr_grid(self, delta_k):
         delta_k_complex = delta_k[0] + self.J * delta_k[1]
@@ -43,27 +45,21 @@ class ForwardModelledVelocityBox:
         v_ky = self.J * 100 * self.f * delta_k_complex * self.k[1] / self.k_norm / self.k_norm
         v_kz = self.J * 100 * self.f * delta_k_complex * self.k[2] / self.k_norm / self.k_norm
 
-        vx = (np.fft.irfftn(v_kx) * self.V / self.dV)
-        vy = (np.fft.irfftn(v_ky) * self.V / self.dV)
-        vz = (np.fft.irfftn(v_kz) * self.V / self.dV)
+        vx = (jnp.fft.irfftn(v_kx) * self.V / self.dV)
+        vy = (jnp.fft.irfftn(v_ky) * self.V / self.dV)
+        vz = (jnp.fft.irfftn(v_kz) * self.V / self.dV)
 
-        V = np.array([vx, vy, vz])
+        V = jnp.array([vx, vy, vz])
 
-        return np.sum(V * self.r_hat_grid, axis=0)
+        return jnp.sum(V * self.r_hat_grid, axis=0)
 
     def log_prior(self, delta_k):
         delta_k_var = self.Pk_3d / self.V / 2.
-        ln_prior = np.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)
-        print("log-prior per mode: %2.5f"%(2*ln_prior / len(delta_k.flatten())))
+        ln_prior = jnp.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)
         return ln_prior
     
     def grad_prior(self, delta_k):
-        delta_k_var = self.Pk_3d / self.V / 2.
-        grad_real = delta_k[0]  / delta_k_var
-        grad_imag = delta_k[1]  / delta_k_var
-        grad_real[0, 0, 0] = 0.
-        grad_imag[0, 0, 0] = 0.
-        return np.array([grad_real, grad_imag])
+        return grad(self.log_prior)(delta_k)
 
     def lkl(self, delta_k):
         pass
