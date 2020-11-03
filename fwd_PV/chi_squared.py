@@ -4,6 +4,8 @@ from jax import grad
 from .tools.cosmo import z_cos, speed_of_light
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from jax.config import config
+config.update("jax_enable_x64", True)
 
 from fwd_PV.velocity_box import ForwardModelledVelocityBox
 

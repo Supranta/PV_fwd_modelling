@@ -4,6 +4,8 @@ from jax import grad
 from .tools.cosmo import z_cos, speed_of_light
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from jax.config import config
+config.update("jax_enable_x64", True)
 
 from fwd_PV.velocity_box import ForwardModelledVelocityBox
 
@@ -47,10 +49,15 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz_sigv = (cz_pred - self.cz_obs)/self.sig_v
-        p_r = np.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
+        p_r = self.r * self.r * np.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
         p_r_norm = np.trapz(p_r, self.r, axis=0)
-        return jnp.sum(jnp.log(EPS + jnp.trapz(jnp.exp(-0.5*delta_cz_sigv**2) * p_r / p_r_norm, self.r, axis=0)))
+        lkl = jnp.sum(jnp.log(EPS + jnp.trapz(jnp.exp(-0.5*delta_cz_sigv**2) * p_r / p_r_norm, self.r, axis=0)))
+        return lkl
 
     def grad_lkl(self, delta_k):
-        lkl = grad(self.log_lkl)(delta_k)
-        return jnp.array([-lkl[0], lkl[1]])
+        lkl_grad = grad(self.log_lkl)(delta_k)
+        #is_inf = (np.sum(np.isinf(lkl_grad)) > 0.)
+        #is_nan = (np.sum(np.isnan(lkl_grad)) > 0.)
+        #if(is_inf or is_nan):
+        #    return jnp.array(np.zeros(lkl_grad.shape))
+        return jnp.array([-lkl_grad[0], lkl_grad[1]])

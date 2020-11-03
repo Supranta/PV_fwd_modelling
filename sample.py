@@ -7,6 +7,8 @@ from fwd_PV.fwd_lkl import ForwardLikelihoodBox
 from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.tools.cosmo import camb_PS
 from fwd_PV.io import process_datafile, process_config, config_fwd_lkl
+from jax.config import config
+config.update("jax_enable_x64", True)
 
 restart_flag = sys.argv[1]
 assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1st command line argument) must be either INIT or RESUME"

@@ -9,7 +9,7 @@ import sys
 
 configfile = sys.argv[1]
 
-N_BOX, L, _, _, _,\
+N_BOX, L, _, _, _, _,\
         datafile, savedir, _, _= process_config(configfile)
 
 l = L / N_BOX
