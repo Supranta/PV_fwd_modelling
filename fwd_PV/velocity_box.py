@@ -55,20 +55,14 @@ class ForwardModelledVelocityBox:
 
     def log_prior(self, delta_k):
         delta_k_var = self.Pk_3d / self.V / 2.
-        ln_prior = jnp.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)
+        ln_prior = jnp.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var) + jnp.sum(delta_k_var)
         return ln_prior
-    
+
     def grad_prior(self, delta_k):
-        return grad(self.log_prior)(delta_k)
+        return grad(self.log_prior, 0)(delta_k)
 
-    def lkl(self, delta_k):
-        pass
-    
-    def grad_lkl(self, delta_k):
-        pass
+    def psi(self, delta_k, A):
+        return self.log_lkl(delta_k, A) + self.log_prior(delta_k)
 
-    def psi(self, delta_k):
-        return self.log_lkl(delta_k) + self.log_prior(delta_k)
-
-    def grad_psi(self, delta_k):
-        return self.grad_prior(delta_k) + self.grad_lkl(delta_k)
+    def grad_psi(self, delta_k, A):
+        return self.grad_prior(delta_k) + self.grad_lkl(delta_k, A)

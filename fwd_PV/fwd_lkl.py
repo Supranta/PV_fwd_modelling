@@ -24,7 +24,6 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.los_density = self.get_los_density(delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS)
         r = np.linspace(1., 200., N_POINTS)
         self.r = r.reshape((N_POINTS, 1))
-        self.delta_r = np.mean((r[1:] - r[:-1]))
         self.r_hMpc = r_hMpc.reshape((1,-1))
         self.e_rhMpc = e_rhMpc.reshape((1,-1))
         self.z_cos = z_cos(self.r, self.OmegaM)
@@ -33,31 +32,4 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         
 
     def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS=201):
-        r_hat = np.array(SkyCoord(ra=self.RA*u.deg, dec=self.DEC*u.deg).cartesian.xyz)
-        r_hat = r_hat.reshape((1,3,-1))
-        r = np.linspace(1., 200., N_POINTS)
-        r = r.reshape((N_POINTS, 1, 1))
-        cartesian_pos = (r * r_hat)
-        l  = L_BOX_MB / N_GRID_MB
-        MB_indices = ((cartesian_pos + L_BOX_MB / 2.) / l).astype(int)
-        self.indices = ((cartesian_pos + self.L_BOX / 2.) / self.l).astype(int)
-        delta_los = delta_MB[MB_indices[:,0,:], MB_indices[:,1,:], MB_indices[:,2,:]]
-        return delta_los
-    
-    def log_lkl(self, delta_k):
-        V_r = self.Vr_grid(delta_k)
-        Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
-        cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
-        delta_cz_sigv = (cz_pred - self.cz_obs)/self.sig_v
-        p_r = self.r * self.r * np.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
-        p_r_norm = np.trapz(p_r, self.r, axis=0)
-        lkl = jnp.sum(jnp.log(EPS + jnp.trapz(jnp.exp(-0.5*delta_cz_sigv**2) * p_r / p_r_norm, self.r, axis=0)))
-        return lkl
-
-    def grad_lkl(self, delta_k):
-        lkl_grad = grad(self.log_lkl)(delta_k)
-        #is_inf = (np.sum(np.isinf(lkl_grad)) > 0.)
-        #is_nan = (np.sum(np.isnan(lkl_grad)) > 0.)
-        #if(is_inf or is_nan):
-        #    return jnp.array(np.zeros(lkl_grad.shape))
-        return jnp.array([-lkl_grad[0], lkl_grad[1]])
+        pass

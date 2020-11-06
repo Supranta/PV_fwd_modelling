@@ -22,14 +22,18 @@ class ChiSquared(ForwardModelledVelocityBox):
         self.indices = ((self.cartesian_pos +  self.L_BOX/2.) / self.l).astype(int)
         self.sig_v = 250.
 
-    def log_lkl(self, delta_k):
-        V_r = self.Vr_grid(delta_k)
+    def log_lkl(self, delta_k, A):
+        V_r = A * self.Vr_grid(delta_k)
         V_r_tracers = V_r[self.indices[0], self.indices[1], self.indices[2]]
         cz_pred = speed_of_light * self.z_cos + V_r_tracers * (1. + self.z_cos)
         sigma_tot_sq = self.sig_v**2 + self.sigmad**2
         lkl = jnp.sum(0.5 * (self.cz_obs - cz_pred)**2 / sigma_tot_sq)
         return lkl
 
-    def grad_lkl(self, delta_k):
-        lkl = grad(self.log_lkl)(delta_k)
+    def grad_lkl(self, delta_k, A):
+        lkl = grad(self.log_lkl, 0)(delta_k, A)
         return jnp.array([-lkl[0], lkl[1]])
+
+    def cosmo_lnprob(self, A, delta_k):
+        ln_prob = -self.log_lkl(delta_k, A) - 0.5 * ((A - 1.)/0.3)**2
+        return ln_prob

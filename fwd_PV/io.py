@@ -10,6 +10,7 @@ def process_config(configfile):
     N_GRID = int(config['BOX']['N_GRID'])
     L_BOX  = float(config['BOX']['L_BOX'])
     likelihood = config['BOX']['likelihood']
+    sample_cosmology = bool(config['BOX']['sample_cosmology'].lower()=="true")
 
     N_MCMC = int(config['MCMC']['N_MCMC'])
     dt     = float(config['MCMC']['dt'])
@@ -20,7 +21,7 @@ def process_config(configfile):
     N_SAVE = int(config['IO']['N_SAVE'])
     N_RESTART = int(config['IO']['N_RESTART'])
 
-    return N_GRID, L_BOX, likelihood,\
+    return N_GRID, L_BOX, likelihood, sample_cosmology,\
             N_MCMC, dt, N_LEAPFROG,\
             datafile, savedir, N_SAVE, N_RESTART 
 
