@@ -38,6 +38,11 @@ class ForwardModelledVelocityBox:
         
         return jnp.array([delta_k_real, delta_k_imag])
 
+    def get_delta_grid(self, delta_k):
+        delta_k_complex = delta_k[0] + self.J * delta_k[1]
+        delta_x = self.V / self.dV * jnp.fft.irfftn(delta_k_complex)
+        return delta_x
+    
     def Vr_grid(self, delta_k):
         delta_k_complex = delta_k[0] + self.J * delta_k[1]
         

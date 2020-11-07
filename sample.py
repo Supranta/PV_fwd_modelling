@@ -50,16 +50,18 @@ elif(restart_flag=='RESUME'):
     f_restart.close()
 
 mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
-sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
-A_sampler = SliceSampler(1, VelocityBox.cosmo_lnprob, 0.1)
+density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
 accepted = 0
+if(sample_cosmology):
+    A_sampler = SliceSampler(1, VelocityBox.cosmo_lnprob, 0.1)
+
 
 N_THIN_COSMO = 2
 
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
-    delta_k, ln_prob, acc = sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"A":A}, grad_psi_kwargs={"A":A})
+    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"A":A}, grad_psi_kwargs={"A":A})
     print("ln_prob: %2.4f"%(ln_prob))
     if(acc):
         print("Accepted")
