@@ -53,7 +53,7 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         p_r_norm = np.trapz(p_r, self.r, axis=0)
         p_cz = (EPS + jnp.trapz(jnp.exp(-0.5*delta_cz_sigv**2) * p_r / p_r_norm, self.r, axis=0))
         lkl_ind = jnp.log(p_cz)
-        lkl = jnp.sum(lkl_ind)
+        lkl = jnp.sum(-lkl_ind)
         return lkl
 
     def grad_lkl(self, delta_k, A):
