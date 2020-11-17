@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import h5py as h5
+import time
 
 from fwd_PV.chi_squared import ChiSquared
 from fwd_PV.fwd_lkl import ForwardLikelihoodBox
@@ -34,7 +35,7 @@ elif(likelihood=='fwd_lkl'):
     PV_data = [r_hMpc, e_rhMpc, RA, DEC, z_obs]
     MB_data = config_fwd_lkl(configfile)
     VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data)
-    
+ 
 if(restart_flag=='INIT'):
     density_scaling = 0.1
     delta_k = density_scaling * VelocityBox.generate_delta_k()
@@ -52,6 +53,7 @@ elif(restart_flag=='RESUME'):
 mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
 density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
 accepted = 0
+
 if(sample_cosmology):
     A_sampler = SliceSampler(1, VelocityBox.cosmo_lnprob, 0.1)
 
@@ -61,12 +63,14 @@ N_THIN_COSMO = 2
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
+    start_time=time.time()
     delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"A":A}, grad_psi_kwargs={"A":A})
     print("ln_prob: %2.4f"%(ln_prob))
     if(acc):
         print("Accepted")
         accepted += 1
-
+    end_time = time.time()
+    print("Time taken: %2.4f"%(end_time - start_time))
     acceptance_rate = accepted / (i - N_START + 1)
     print("Current acceptance rate: %2.3f"%(acceptance_rate))
     if(sample_cosmology & (i%N_THIN_COSMO == 0)):

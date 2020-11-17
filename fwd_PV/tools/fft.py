@@ -1,4 +1,5 @@
 import numpy as np
+import jax.numpy as jnp
 
 def Fourier_ks(N_BOX, l):
     kx = 2*np.pi*np.fft.fftfreq(N_BOX,d=l)
@@ -14,7 +15,7 @@ def Fourier_ks(N_BOX, l):
     k_norm = np.sqrt(kx_vec**2 + ky_vec**2 + kz_vec**2)
     k_norm[(k_norm < 1e-10)] = 1e-15
     
-    return np.array([kx_vec, ky_vec, kz_vec]), k_norm
+    return jnp.array([kx_vec, ky_vec, kz_vec]), jnp.array(k_norm)
 
 def grid_r_hat(N_BOX):
     X = np.linspace(-N_BOX/2, N_BOX/2, N_BOX)
@@ -29,4 +30,4 @@ def grid_r_hat(N_BOX):
 
     R_hat = R_vec / np.linalg.norm(R_vec, axis=0)
     
-    return np.array(R_hat)
+    return jnp.array(R_hat)

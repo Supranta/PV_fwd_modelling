@@ -20,7 +20,7 @@ class ChiSquared(ForwardModelledVelocityBox):
         self.cartesian_pos = r_hMpc * r_hat
         self.z_cos = z_cos(r_hMpc, self.OmegaM)
         self.indices = ((self.cartesian_pos +  self.L_BOX/2.) / self.l).astype(int)
-        self.sig_v = 250.
+        self.sig_v = 150.
 
     def log_lkl(self, delta_k, A):
         V_r = A * self.Vr_grid(delta_k)

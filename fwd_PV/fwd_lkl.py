@@ -29,7 +29,7 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.e_rhMpc = e_rhMpc.reshape((1,-1))
         self.z_cos = z_cos(self.r, self.OmegaM)
         self.cz_obs = (speed_of_light * z_obs).reshape((1,-1))
-        self.sig_v = 250.
+        self.sig_v = 150.
         
 
     def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS=201):
@@ -51,7 +51,8 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         delta_cz_sigv = (cz_pred - self.cz_obs)/self.sig_v
         p_r = self.r * self.r * np.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
         p_r_norm = np.trapz(p_r, self.r, axis=0)
-        p_cz = (EPS + jnp.trapz(jnp.exp(-0.5*delta_cz_sigv**2) * p_r / p_r_norm, self.r, axis=0))
+        exp_delta_cz = jnp.exp(-0.5*delta_cz_sigv**2) 
+        p_cz = (jnp.trapz(exp_delta_cz * p_r / p_r_norm, self.r, axis=0))
         lkl_ind = jnp.log(p_cz)
         lkl = jnp.sum(-lkl_ind)
         return lkl

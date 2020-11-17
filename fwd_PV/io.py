@@ -3,6 +3,20 @@ import numpy as np
 import h5py as h5
 import configparser
 
+def process_config_analysis(configfile):
+    config = configparser.ConfigParser()
+    config.read(configfile)
+
+    N_GRID = int(config['BOX']['N_GRID'])
+    L_BOX  = float(config['BOX']['L_BOX'])
+
+    savedir  = config['IO']['savedir']
+
+    PROCESS_3D_V_DELTA = bool(config['ANALYSIS']['process_3d_v_delta'].lower() == "true")
+    CALCULATE_MEAN_STD = bool(config['ANALYSIS']['calculate_mean_std'].lower() == "true")
+    
+    return N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD
+
 def process_config(configfile):
     config = configparser.ConfigParser()
     config.read(configfile)

@@ -11,7 +11,7 @@ class ForwardModelledVelocityBox:
         self.N_SIDE = N_SIDE
         self.V = L_BOX**3
         l = L_BOX/N_SIDE
-        self.J = np.complex(0, 1)
+        self.J = jnp.array(np.complex(0, 1))
         self.l = l
         self.dV = l**3
         self.k, self.k_norm = Fourier_ks(N_SIDE, l)
@@ -27,7 +27,7 @@ class ForwardModelledVelocityBox:
         Pk_3d = 1e-20 * np.ones(k_abs.shape)
         select_positive_k = (k_abs > 1e-10)
         Pk_3d[select_positive_k] = self.Pk_interp(k_abs[select_positive_k])
-        return Pk_3d
+        return jnp.array(Pk_3d)
 
     def generate_delta_k(self):
         delta_k_real = np.random.normal(0., np.sqrt(self.Pk_3d / self.V / 2))
