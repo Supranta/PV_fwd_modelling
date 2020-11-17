@@ -17,7 +17,7 @@ assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1s
 
 configfile = sys.argv[2]
 
-N_GRID, L_BOX, likelihood, sample_cosmology,\
+N_GRID, L_BOX, likelihood, sample_cosmology, smooth_R,\
         N_MCMC, dt, N_LEAPFROG,\
         datafile, savedir, N_SAVE, N_RESTART= process_config(configfile)
 
@@ -29,12 +29,12 @@ kh, pk = camb_PS()
 
 if(likelihood=='chi-squared'):
     print("Initializing Chi-Squared Velocity Box....")
-    VelocityBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, interpolate=False)
+    VelocityBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, smooth_R)
 elif(likelihood=='fwd_lkl'):
     print("Initializing fwd_lkl Velocity Box....")
     PV_data = [r_hMpc, e_rhMpc, RA, DEC, z_obs]
     MB_data = config_fwd_lkl(configfile)
-    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data)
+    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data, smooth_R=smooth_R)
  
 if(restart_flag=='INIT'):
     density_scaling = 0.1
@@ -56,7 +56,6 @@ accepted = 0
 
 if(sample_cosmology):
     A_sampler = SliceSampler(1, VelocityBox.cosmo_lnprob, 0.1)
-
 
 N_THIN_COSMO = 2
 

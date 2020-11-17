@@ -12,8 +12,8 @@ from fwd_PV.velocity_box import ForwardModelledVelocityBox
 EPS = 1e-50
 
 class ForwardLikelihoodBox(ForwardModelledVelocityBox):
-    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, N_POINTS=201):
-        super().__init__(N_SIDE, L_BOX, kh, pk)
+    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, smooth_R, N_POINTS=501):
+        super().__init__(N_SIDE, L_BOX, kh, pk, smooth_R)
         r_hMpc, e_rhMpc, RA, DEC, z_obs = PV_data
         r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
         self.r_hat = r_hat

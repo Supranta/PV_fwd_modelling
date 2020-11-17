@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 from .tools.fft import grid_r_hat, Fourier_ks
 
 class ForwardModelledVelocityBox:
-    def __init__(self, N_SIDE, L_BOX, kh, pk):
+    def __init__(self, N_SIDE, L_BOX, kh, pk, smooth_R=0.):
         self.L_BOX  = L_BOX
         self.N_SIDE = N_SIDE
         self.V = L_BOX**3
@@ -15,6 +15,8 @@ class ForwardModelledVelocityBox:
         self.l = l
         self.dV = l**3
         self.k, self.k_norm = Fourier_ks(N_SIDE, l)
+        kR = self.k_norm * smooth_R
+        self.window = np.exp(-0.5 * kR**2)
         OmegaM = 0.315
         self.OmegaM = OmegaM
         self.f = OmegaM**0.55
@@ -46,9 +48,9 @@ class ForwardModelledVelocityBox:
     def Vr_grid(self, delta_k):
         delta_k_complex = delta_k[0] + self.J * delta_k[1]
         
-        v_kx = self.J * 100 * self.f * delta_k_complex * self.k[0] / self.k_norm / self.k_norm
-        v_ky = self.J * 100 * self.f * delta_k_complex * self.k[1] / self.k_norm / self.k_norm
-        v_kz = self.J * 100 * self.f * delta_k_complex * self.k[2] / self.k_norm / self.k_norm
+        v_kx = self.J * 100 * self.window * self.f * delta_k_complex * self.k[0] / self.k_norm / self.k_norm
+        v_ky = self.J * 100 * self.window * self.f * delta_k_complex * self.k[1] / self.k_norm / self.k_norm
+        v_kz = self.J * 100 * self.window * self.f * delta_k_complex * self.k[2] / self.k_norm / self.k_norm
 
         vx = (jnp.fft.irfftn(v_kx) * self.V / self.dV)
         vy = (jnp.fft.irfftn(v_ky) * self.V / self.dV)
