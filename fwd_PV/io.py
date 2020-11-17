@@ -25,10 +25,12 @@ def process_config(configfile):
     L_BOX  = float(config['BOX']['L_BOX'])
     likelihood = config['BOX']['likelihood']
     sample_cosmology = bool(config['BOX']['sample_cosmology'].lower()=="true")
+    sample_sigv = bool(config['BOX']['sample_sigv'].lower()=="true")
+    window = config['BOX']['window']
     try:
-        smooth_R = float(config['BOX']['smooth_R']) 
+        smoothing_scale = float(config['BOX']['smoothing_scale']) 
     except:
-        smooth_R = 0. 
+        smoothing_scale = 0. 
 
     N_MCMC = int(config['MCMC']['N_MCMC'])
     dt     = float(config['MCMC']['dt'])
@@ -39,7 +41,7 @@ def process_config(configfile):
     N_SAVE = int(config['IO']['N_SAVE'])
     N_RESTART = int(config['IO']['N_RESTART'])
 
-    return N_GRID, L_BOX, likelihood, sample_cosmology, smooth_R,\
+    return N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scale,\
             N_MCMC, dt, N_LEAPFROG,\
             datafile, savedir, N_SAVE, N_RESTART 
 

@@ -17,7 +17,7 @@ assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1s
 
 configfile = sys.argv[2]
 
-N_GRID, L_BOX, likelihood, sample_cosmology, smooth_R,\
+N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scale,\
         N_MCMC, dt, N_LEAPFROG,\
         datafile, savedir, N_SAVE, N_RESTART= process_config(configfile)
 
@@ -29,17 +29,19 @@ kh, pk = camb_PS()
 
 if(likelihood=='chi-squared'):
     print("Initializing Chi-Squared Velocity Box....")
-    VelocityBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, smooth_R)
+    VelocityBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, smoothing_scale)
 elif(likelihood=='fwd_lkl'):
     print("Initializing fwd_lkl Velocity Box....")
     PV_data = [r_hMpc, e_rhMpc, RA, DEC, z_obs]
     MB_data = config_fwd_lkl(configfile)
-    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data, smooth_R=smooth_R)
+    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data, smoothing_scale=smoothing_scale, window=window)
  
 if(restart_flag=='INIT'):
     density_scaling = 0.1
     delta_k = density_scaling * VelocityBox.generate_delta_k()
     A = 1.
+    OmegaM = 0.315
+    sig_v = 150.
     N_START = 0
 
 elif(restart_flag=='RESUME'):
@@ -48,6 +50,8 @@ elif(restart_flag=='RESUME'):
     N_START = f_restart['N_STEP'].value
     delta_k = f_restart['delta_k'][:]
     A = f_restart['A'].value
+    OmegaM = f_restart['OmegaM'].value
+    sig_v = f_restart['sig_v'].value
     f_restart.close()
 
 mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
@@ -55,15 +59,15 @@ density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_ps
 accepted = 0
 
 if(sample_cosmology):
-    A_sampler = SliceSampler(1, VelocityBox.cosmo_lnprob, 0.1)
-
-N_THIN_COSMO = 2
-
+    s8_sampler = SliceSampler(1, VelocityBox.lnprob_s8, 0.03)
+    Om_sampler = SliceSampler(1, VelocityBox.lnprob_Om, 0.03)
+if(sample_sigv):
+    sigv_sampler = SliceSampler(1, VelocityBox.lnprob_sigv, 10.)
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
     start_time=time.time()
-    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"A":A}, grad_psi_kwargs={"A":A})
+    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"A":A, "OmegaM": OmegaM, "sig_v":sig_v}, grad_psi_kwargs={"A":A, "OmegaM":OmegaM, "sig_v":sig_v})
     print("ln_prob: %2.4f"%(ln_prob))
     if(acc):
         print("Accepted")
@@ -72,10 +76,15 @@ for i in range(N_START, N_START + N_MCMC):
     print("Time taken: %2.4f"%(end_time - start_time))
     acceptance_rate = accepted / (i - N_START + 1)
     print("Current acceptance rate: %2.3f"%(acceptance_rate))
-    if(sample_cosmology & (i%N_THIN_COSMO == 0)):
+    if(sample_cosmology):
         print("Sampling cosmology...")
-        A = A_sampler.sample_one_step(A, lnprob_kwargs={"delta_k":delta_k})
-        print("A: %2.4f"%(A))
+        A = s8_sampler.sample_one_step(A, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM})
+        OmegaM = Om_sampler.sample_one_step(OmegaM, lnprob_kwargs={"delta_k":delta_k, "A":A, "sig_v":sig_v})
+        print("A: %2.4f, OmegaM:%2.4f"%(A, OmegaM))
+    if(sample_sigv):
+        print("Sample sig_v...")
+        sig_v = sigv_sampler.sample_one_step(sig_v, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM, "A":A})
+        print("sig_v: %2.2f"%(sig_v))
     if(i%N_SAVE==0):
         print('=============')
         print('Saving file...')
@@ -85,6 +94,8 @@ for i in range(N_START, N_START + N_MCMC):
         f['delta_k'] = delta_k
         f['ln_prob'] = ln_prob
         f['A'] = A
+        f['OmegaM'] = OmegaM
+        f['sig_v'] = sig_v
         f.close()
     if(i%N_RESTART==0):
         print("Saving restart file...")
@@ -92,4 +103,6 @@ for i in range(N_START, N_START + N_MCMC):
         f['delta_k'] = delta_k
         f['N_STEP'] = i
         f['A'] = A
+        f['OmegaM'] = OmegaM
+        f['sig_v'] = sig_v
         f.close()

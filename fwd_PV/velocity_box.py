@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 from .tools.fft import grid_r_hat, Fourier_ks
 
 class ForwardModelledVelocityBox:
-    def __init__(self, N_SIDE, L_BOX, kh, pk, smooth_R=0.):
+    def __init__(self, N_SIDE, L_BOX, kh, pk, smoothing_scale, window):
         self.L_BOX  = L_BOX
         self.N_SIDE = N_SIDE
         self.V = L_BOX**3
@@ -15,8 +15,13 @@ class ForwardModelledVelocityBox:
         self.l = l
         self.dV = l**3
         self.k, self.k_norm = Fourier_ks(N_SIDE, l)
-        kR = self.k_norm * smooth_R
-        self.window = np.exp(-0.5 * kR**2)
+        if(window=='Gaussian'):
+            kR = self.k_norm * smoothing_scale
+            self.window = np.exp(-0.5 * kR**2)
+        elif(window=='kmax'):
+            window_kmax = np.ones(self.k_norm.shape)
+            window_kmax[self.k_norm > smoothing_scale] = 0.
+            self.window = window_kmax
         OmegaM = 0.315
         self.OmegaM = OmegaM
         self.f = OmegaM**0.55
@@ -45,12 +50,14 @@ class ForwardModelledVelocityBox:
         delta_x = self.V / self.dV * jnp.fft.irfftn(delta_k_complex)
         return delta_x
     
-    def Vr_grid(self, delta_k):
+    def Vr_grid(self, delta_k, OmegaM=0.315):
         delta_k_complex = delta_k[0] + self.J * delta_k[1]
         
-        v_kx = self.J * 100 * self.window * self.f * delta_k_complex * self.k[0] / self.k_norm / self.k_norm
-        v_ky = self.J * 100 * self.window * self.f * delta_k_complex * self.k[1] / self.k_norm / self.k_norm
-        v_kz = self.J * 100 * self.window * self.f * delta_k_complex * self.k[2] / self.k_norm / self.k_norm
+        f = OmegaM**0.55
+
+        v_kx = self.J * 100 * self.window * f * delta_k_complex * self.k[0] / self.k_norm / self.k_norm
+        v_ky = self.J * 100 * self.window * f * delta_k_complex * self.k[1] / self.k_norm / self.k_norm
+        v_kz = self.J * 100 * self.window * f * delta_k_complex * self.k[2] / self.k_norm / self.k_norm
 
         vx = (jnp.fft.irfftn(v_kx) * self.V / self.dV)
         vy = (jnp.fft.irfftn(v_ky) * self.V / self.dV)
@@ -60,16 +67,22 @@ class ForwardModelledVelocityBox:
 
         return jnp.sum(V * self.r_hat_grid, axis=0)
 
-    def log_prior(self, delta_k):
-        delta_k_var = self.Pk_3d / self.V / 2.
-        ln_prior = jnp.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var) + jnp.sum(delta_k_var)
+    def log_prior(self, delta_k, A):
+        delta_k_var = A * self.Pk_3d / self.V / 2.
+        ln_prior = jnp.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var) + jnp.sum(jnp.log(delta_k_var))
         return ln_prior
 
-    def grad_prior(self, delta_k):
-        return grad(self.log_prior, 0)(delta_k)
+    def grad_prior(self, delta_k, A):
+        return grad(self.log_prior, 0)(delta_k, A)
 
-    def psi(self, delta_k, A):
-        return self.log_lkl(delta_k, A) + self.log_prior(delta_k)
+    def psi(self, delta_k, A, OmegaM, sig_v):
+        return self.log_prior(delta_k, A) + self.log_lkl(delta_k, A, OmegaM, sig_v)
 
-    def grad_psi(self, delta_k, A):
-        return self.grad_prior(delta_k) + self.grad_lkl(delta_k, A)
+    def grad_psi(self, delta_k, A, OmegaM, sig_v):
+        return self.grad_prior(delta_k, A) + self.grad_lkl(delta_k, A, OmegaM, sig_v)
+
+    def lnprob_s8(self, A, OmegaM, delta_k):
+        select_low_k = (self.k_norm < 0.1)
+        delta_k_var = A * self.Pk_3d / self.V / 2.
+        logP = -np.sum((0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)[select_low_k]) - np.sum(np.log(delta_k_var[select_low_k]))
+        return logP
