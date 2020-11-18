@@ -11,10 +11,11 @@ configfile = sys.argv[1]
 N_START = int(sys.argv[2])
 N_END   = int(sys.argv[3])
 
-N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD = process_config_analysis(configfile) 
+N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD,\
+            window, smoothing_scale = process_config_analysis(configfile) 
 
 kh, pk = camb_PS()
-InferenceBox = ForwardModelledVelocityBox(N_GRID, L_BOX, kh, pk)
+InferenceBox = ForwardModelledVelocityBox(N_GRID, L_BOX, kh, pk, smoothing_scale, window)
 
 if(PROCESS_3D_V_DELTA):
     for i in range(N_START, N_END):

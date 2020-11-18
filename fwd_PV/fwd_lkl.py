@@ -23,7 +23,7 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.DEC = DEC
         delta_MB, L_BOX_MB, N_GRID_MB = MB_data
         self.los_density = self.get_los_density(delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS)
-        r = np.linspace(1., 200., N_POINTS)
+        r = np.linspace(1., 245., N_POINTS)
         self.r = r.reshape((N_POINTS, 1))
         self.delta_r = np.mean((r[1:] - r[:-1]))
         self.r_hMpc = r_hMpc.reshape((1,-1))
@@ -34,7 +34,7 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
     def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS=201):
         r_hat = np.array(SkyCoord(ra=self.RA*u.deg, dec=self.DEC*u.deg).cartesian.xyz)
         r_hat = r_hat.reshape((1,3,-1))
-        r = np.linspace(1., 200., N_POINTS)
+        r = np.linspace(1., 245., N_POINTS)
         r = r.reshape((N_POINTS, 1, 1))
         cartesian_pos = (r * r_hat)
         l  = L_BOX_MB / N_GRID_MB
@@ -64,4 +64,5 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         return -self.log_lkl(delta_k, A, OmegaM, sig_v) + self.lnprob_s8(A, OmegaM, delta_k)
 
     def lnprob_sigv(self, sig_v, delta_k, OmegaM, A):
-        return -self.log_lkl(delta_k, A, OmegaM, sig_v)
+        logP = -self.log_lkl(delta_k, A, OmegaM, sig_v)
+        return logP

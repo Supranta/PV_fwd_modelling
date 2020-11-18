@@ -49,9 +49,14 @@ elif(restart_flag=='RESUME'):
     f_restart = h5.File(savedir+'/restart.h5', 'r')
     N_START = f_restart['N_STEP'].value
     delta_k = f_restart['delta_k'][:]
-    A = f_restart['A'].value
-    OmegaM = f_restart['OmegaM'].value
-    sig_v = f_restart['sig_v'].value
+    try:
+        A = f_restart['A'].value
+        OmegaM = f_restart['OmegaM'].value
+        sig_v = f_restart['sig_v'].value
+    except:
+        A = 1.
+        OmegaM = 0.315
+        sig_v = 150.
     f_restart.close()
 
 mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])

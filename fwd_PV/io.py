@@ -14,8 +14,11 @@ def process_config_analysis(configfile):
 
     PROCESS_3D_V_DELTA = bool(config['ANALYSIS']['process_3d_v_delta'].lower() == "true")
     CALCULATE_MEAN_STD = bool(config['ANALYSIS']['calculate_mean_std'].lower() == "true")
+   
+    window = config['BOX']['window']
+    smoothing_scale = float(config['BOX']['smoothing_scale']) 
     
-    return N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD
+    return N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD, window, smoothing_scale
 
 def process_config(configfile):
     config = configparser.ConfigParser()

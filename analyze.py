@@ -9,7 +9,7 @@ import sys
 
 configfile = sys.argv[1]
 
-N_BOX, L, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD = process_config_analysis(configfile)
+N_BOX, L, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD, _, _ = process_config_analysis(configfile)
 
 try:
     PLOT_LKL = bool(sys.argv[4] == '1')
