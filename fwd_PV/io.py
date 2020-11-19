@@ -27,6 +27,7 @@ def process_config_analysis(configfile):
 
     N_GRID = int(config['BOX']['N_GRID'])
     L_BOX  = float(config['BOX']['L_BOX'])
+    Pk_type = config['BOX']['Pk_type']
 
     savedir  = config['IO']['savedir']
 
@@ -36,7 +37,7 @@ def process_config_analysis(configfile):
     window = config['BOX']['window']
     smoothing_scale = float(config['BOX']['smoothing_scale']) 
     
-    return N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD, window, smoothing_scale
+    return N_GRID, L_BOX, Pk_type, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD, window, smoothing_scale
 
 def process_config(configfile):
     config = configparser.ConfigParser()

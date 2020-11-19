@@ -13,8 +13,8 @@ from fwd_PV.velocity_box import ForwardModelledVelocityBox
 EPS = 1e-50
 
 class ForwardLikelihoodBox(ForwardModelledVelocityBox):
-    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, smoothing_scale, window, Pk_type, N_POINTS=501):
-        super().__init__(N_SIDE, L_BOX, kh, pk, smoothing_scale, window, Pk_type)
+    def __init__(self, N_SIDE, L_BOX, PV_data, MB_data, smoothing_scale, window, Pk_type, Pk_data, N_POINTS=501):
+        super().__init__(N_SIDE, L_BOX, smoothing_scale, window, Pk_type, Pk_data)
         r_hMpc, e_rhMpc, RA, DEC, z_obs = PV_data
         r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
         self.r_hat = r_hat
@@ -43,9 +43,8 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         delta_los = delta_MB[MB_indices[:,0,:], MB_indices[:,1,:], MB_indices[:,2,:]]
         return delta_los
     
-    def log_lkl(self, delta_k, sigma8, OmegaM, sig_v):
-        A = sigma8 / self.sigma8_fid
-        V_r = A * self.Vr_grid(delta_k, OmegaM)
+    def log_lkl(self, delta_k, OmegaM, sig_v):
+        V_r = self.Vr_grid(delta_k, OmegaM)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz_sigv = (cz_pred - self.cz_obs)/sig_v
@@ -57,13 +56,15 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         lkl = jnp.sum(-lkl_ind)
         return lkl
 
-    def grad_lkl(self, delta_k, sigma8, OmegaM, sigv):
-        lkl_grad = grad(self.log_lkl, 0)(delta_k, sigma8, OmegaM, sigv)
+    def grad_lkl(self, delta_k, OmegaM, sig_v):
+        lkl_grad = grad(self.log_lkl, 0)(delta_k, OmegaM, sig_v)
         return jnp.array([-lkl_grad[0], lkl_grad[1]])
 
     def lnprob_Om(self, OmegaM, delta_k, sigma8, sig_v):
-        return -self.log_lkl(delta_k, sigma8, OmegaM, sig_v) + self.lnprob_s8(sigma8, OmegaM, delta_k)
+        if((OmegaM < 0.1) or (OmegaM > 0.6)):
+            return -np.inf
+        return -self.log_lkl(delta_k, OmegaM, sig_v) + self.lnprob_s8(sigma8, OmegaM, delta_k)
 
     def lnprob_sigv(self, sig_v, delta_k, OmegaM, sigma8):
-        logP = -self.log_lkl(delta_k, sigma8, OmegaM, sig_v)
+        logP = -self.log_lkl(delta_k, OmegaM, sig_v)
         return logP

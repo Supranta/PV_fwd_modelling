@@ -35,6 +35,8 @@ def measure_Pk(delta_k, k_norm, k_bins):
 N_START = int(sys.argv[2])
 N_END = int(sys.argv[3])
 
+savedir = '../'+savedir
+
 if(PLOT_LKL):
     ln_prob_list = []
     for i in range(N_START, N_END):

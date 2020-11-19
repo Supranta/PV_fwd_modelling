@@ -32,6 +32,23 @@ def camb_PS():
     #Non-Linear spectra (Halofit)
     pars.NonLinear = model.NonLinear_both
     results.calc_power_spectra(pars)
-    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-2, maxkh=5, npoints = 2000)
+    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-2, maxkh=5., npoints = 2000)
     
     return kh, pk[0]
+
+def Pk_interpolated(s8, Om, s8_mesh, Om_mesh, Pk_arr, i_mesh, j_mesh, factor):
+    dist = np.sqrt((Om_mesh - Om)**2 + factor * (s8_mesh - s8)**2)
+    dist_min = np.sort(dist.flatten())[:4]
+    weights = (1./dist_min)
+    weights = weights/np.sum(weights)
+    min_inds = np.argsort(dist.flatten())[:4]
+    
+    Om_mins = Om_mesh.flatten()[min_inds]
+    sig8_mins = s8_mesh.flatten()[min_inds]
+    i_ind = i_mesh.flatten()[min_inds]
+    j_ind = j_mesh.flatten()[min_inds]
+    
+    Pk_near = Pk_arr[i_ind, j_ind]
+    Pk_interp = np.sum(weights.reshape(4,1) * Pk_near, axis=0)
+    
+    return Pk_interp

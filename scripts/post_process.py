@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py as h5
-import sys
+import sys, os
+
+sys.path.append(os.path.abspath('..'))
 
 from fwd_PV.velocity_box import ForwardModelledVelocityBox
 from fwd_PV.tools.cosmo import camb_PS
@@ -11,11 +13,13 @@ configfile = sys.argv[1]
 N_START = int(sys.argv[2])
 N_END   = int(sys.argv[3])
 
-N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD,\
+N_GRID, L_BOX, Pk_type, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD,\
             window, smoothing_scale = process_config_analysis(configfile) 
 
 kh, pk = camb_PS()
-InferenceBox = ForwardModelledVelocityBox(N_GRID, L_BOX, kh, pk, smoothing_scale, window)
+InferenceBox = ForwardModelledVelocityBox(N_GRID, L_BOX, smoothing_scale, window, Pk_type)
+
+savedir = '../'+savedir
 
 if(PROCESS_3D_V_DELTA):
     for i in range(N_START, N_END):

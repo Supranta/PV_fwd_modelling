@@ -47,7 +47,7 @@ def camb_PS(OmegaM, As):
     #Non-Linear spectra (Halofit)
     pars.NonLinear = model.NonLinear_both
     results.calc_power_spectra(pars)
-    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-3, maxkh=1., npoints = 2000)
+    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-2, maxkh=5., npoints = 2000)
     
     return kh, pk[0]
 
@@ -69,6 +69,7 @@ start_time = time.time()
 for i in range(Om_size):
     for j in range(As_size):
         print(i,j)
+        t0 = time.time()
         As = As_arr[j]*(0.315/OmegaM_arr[i])
         sigma8[i,j] = get_sigma8(OmegaM_arr[i], As)
         kh, pk = camb_PS(OmegaM_arr[i], As)
@@ -77,13 +78,15 @@ for i in range(Om_size):
         
         i_mesh[i,j] = i
         j_mesh[i,j] = j
+        t1 = time.time()
+        print("Time per step: %2.1f"%(t1 - t0))
 end_time = time.time()
 
 print("Time taken: %2.2f seconds"%(end_time - start_time))
 Om_mesh = np.tile(OmegaM_arr.reshape((Om_size,1)), (1,As_size))
 As_mesh = np.tile(As_arr.reshape((1,As_size)), (Om_size,1))
 
-factor = ((Om_max - Om_min)/(np.max(sigma8) - np.min(sigma8)))**2
+factor = ((Om_max - Om_min)/(np.max(sigma8, axis=1) - np.min(sigma8)))**2
 
 with h5.File('../'+savedir+'/Pk_arr.h5', 'w') as f:
      f['Om_mesh'] = Om_mesh

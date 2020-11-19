@@ -15,7 +15,7 @@ def Fourier_ks(N_BOX, l):
     k_norm = np.sqrt(kx_vec**2 + ky_vec**2 + kz_vec**2)
     k_norm[(k_norm < 1e-10)] = 1e-15
     
-    return jnp.array([kx_vec, ky_vec, kz_vec]), jnp.array(k_norm)
+    return np.array([kx_vec, ky_vec, kz_vec]), k_norm
 
 def grid_r_hat(N_BOX):
     X = np.linspace(-N_BOX/2, N_BOX/2, N_BOX)

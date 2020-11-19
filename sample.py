@@ -8,7 +8,7 @@ from fwd_PV.fwd_lkl import ForwardLikelihoodBox
 from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.samplers.slice import SliceSampler
 from fwd_PV.tools.cosmo import camb_PS
-from fwd_PV.io import process_datafile, process_config, config_fwd_lkl
+from fwd_PV.io import process_datafile, process_config, config_fwd_lkl, config_Pk
 from jax.config import config
 config.update("jax_enable_x64", True)
 
@@ -23,25 +23,35 @@ N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scal
 
 assert likelihood == 'chi-squared' or likelihood == 'fwd_lkl', "The likelihood must be chi-squared or forward-likelihood."
 
-r_hMpc, e_rhMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
+if(Pk_type=='simple'):
+    Pk_data = None
+elif(Pk_type=='camb_interpolate'):
+    with h5.File(savedir+'/Pk_arr.h5', 'r') as f:
+        Om_mesh = f['Om_mesh'][:]
+        s8_mesh = f['s8_mesh'][:]
+        i_mesh = f['i_mesh'][:]
+        j_mesh = f['j_mesh'][:]
+        Pk_arr = f['Pk_arr'][:] 
+        factor = f['factor'].value
+    Pk_data = [s8_mesh, Om_mesh, Pk_arr, i_mesh, j_mesh, factor]
 
-kh, pk = camb_PS()
+r_hMpc, e_rhMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
 
 if(likelihood=='chi-squared'):
     print("Initializing Chi-Squared Velocity Box....")
-    VelocityBox = ChiSquared(N_GRID, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, smoothing_scale)
+    VelocityBox = ChiSquared(N_GRID, L_BOX, r_hMpc, e_rhMpc, RA, DEC, z_obs, smoothing_scale)
 elif(likelihood=='fwd_lkl'):
     print("Initializing fwd_lkl Velocity Box....")
     PV_data = [r_hMpc, e_rhMpc, RA, DEC, z_obs]
     MB_data = config_fwd_lkl(configfile)
-    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data, smoothing_scale, window, Pk_type)
+    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, PV_data, MB_data, smoothing_scale, window, Pk_type, Pk_data)
  
 if(restart_flag=='INIT'):
     density_scaling = 0.1
     delta_k = density_scaling * VelocityBox.generate_delta_k()
-    A = 1.
+    sigma8 = 0.8
     OmegaM = 0.315
-    sig_v = 150.
+    sig_v = 160.
     N_START = 0
 
 elif(restart_flag=='RESUME'):
@@ -56,7 +66,7 @@ elif(restart_flag=='RESUME'):
     except:
         sigma8 = 0.8
         OmegaM = 0.315
-        sig_v = 150.
+        sig_v = 160.
     f_restart.close()
 
 mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
