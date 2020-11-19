@@ -6,7 +6,7 @@ from scipy.interpolate import interp1d
 from .tools.fft import grid_r_hat, Fourier_ks
 
 class ForwardModelledVelocityBox:
-    def __init__(self, N_SIDE, L_BOX, kh, pk, smoothing_scale, window):
+    def __init__(self, N_SIDE, L_BOX, kh, pk, smoothing_scale, window, Pk_type):
         self.L_BOX  = L_BOX
         self.N_SIDE = N_SIDE
         self.V = L_BOX**3
@@ -15,6 +15,11 @@ class ForwardModelledVelocityBox:
         self.l = l
         self.dV = l**3
         self.k, self.k_norm = Fourier_ks(N_SIDE, l)
+        self.Pk_type = Pk_type
+        if(Pk_type=='simple'):
+            self.sigma8_fid = 0.80
+        elif(Pk_type=='camb_interpolate'):
+            pass
         if(window=='Gaussian'):
             kR = self.k_norm * smoothing_scale
             self.window = np.exp(-0.5 * kR**2)
@@ -67,22 +72,25 @@ class ForwardModelledVelocityBox:
 
         return jnp.sum(V * self.r_hat_grid, axis=0)
 
-    def log_prior(self, delta_k, A):
+    def log_prior(self, delta_k, sigma8):
+        A = sigma8 / self.sigma8_fid
         delta_k_var = A * self.Pk_3d / self.V / 2.
         ln_prior = jnp.sum(0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var) + jnp.sum(jnp.log(delta_k_var))
         return ln_prior
 
-    def grad_prior(self, delta_k, A):
-        return grad(self.log_prior, 0)(delta_k, A)
+    def grad_prior(self, delta_k, sigma8):
+        return grad(self.log_prior, 0)(delta_k, sigma8)
 
-    def psi(self, delta_k, A, OmegaM, sig_v):
-        return self.log_prior(delta_k, A) + self.log_lkl(delta_k, A, OmegaM, sig_v)
+    def psi(self, delta_k, sigma8, OmegaM, sig_v):
+        return self.log_prior(delta_k, sigma8) + self.log_lkl(delta_k, sigma8, OmegaM, sig_v)
 
-    def grad_psi(self, delta_k, A, OmegaM, sig_v):
-        return self.grad_prior(delta_k, A) + self.grad_lkl(delta_k, A, OmegaM, sig_v)
+    def grad_psi(self, delta_k, sigma8, OmegaM, sig_v):
+        return self.grad_prior(delta_k, sigma8) + self.grad_lkl(delta_k, sigma8, OmegaM, sig_v)
 
-    def lnprob_s8(self, A, OmegaM, delta_k):
+    def lnprob_s8(self, sigma8, OmegaM, delta_k):
         select_low_k = (self.k_norm < 0.1)
-        delta_k_var = A * self.Pk_3d / self.V / 2.
+        if(self.Pk_type=='simple'):
+            A = sigma8 / self.sigma8_fid
+            delta_k_var = A * self.Pk_3d / self.V / 2.
         logP = -np.sum((0.5 * (delta_k[0]**2 + delta_k[1]**2) / delta_k_var)[select_low_k]) - np.sum(np.log(delta_k_var[select_low_k]))
         return logP

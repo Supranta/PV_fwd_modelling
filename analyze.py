@@ -68,7 +68,7 @@ if(PLOT_Pk):
             Pk_measured_list.append(Pk_sample)
     
     Pk_measured = np.array(Pk_measured_list)
-    np.save(savedir+'Pk_samples.npy', Pk_measured)
+    np.save(savedir+'/Pk_samples.npy', Pk_measured)
     Pk_measured_mean = np.mean(Pk_measured, axis=0)
     Pk_measured_low  = np.percentile(Pk_measured, 16., axis=0)
     Pk_measured_high = np.percentile(Pk_measured, 84., axis=0)

@@ -17,7 +17,7 @@ assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1s
 
 configfile = sys.argv[2]
 
-N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scale,\
+N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scale, Pk_type,\
         N_MCMC, dt, N_LEAPFROG,\
         datafile, savedir, N_SAVE, N_RESTART= process_config(configfile)
 
@@ -34,7 +34,7 @@ elif(likelihood=='fwd_lkl'):
     print("Initializing fwd_lkl Velocity Box....")
     PV_data = [r_hMpc, e_rhMpc, RA, DEC, z_obs]
     MB_data = config_fwd_lkl(configfile)
-    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data, smoothing_scale=smoothing_scale, window=window)
+    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data, smoothing_scale, window, Pk_type)
  
 if(restart_flag=='INIT'):
     density_scaling = 0.1
@@ -50,11 +50,11 @@ elif(restart_flag=='RESUME'):
     N_START = f_restart['N_STEP'].value
     delta_k = f_restart['delta_k'][:]
     try:
-        A = f_restart['A'].value
+        sigma8 = f_restart['sigma8'].value
         OmegaM = f_restart['OmegaM'].value
         sig_v = f_restart['sig_v'].value
     except:
-        A = 1.
+        sigma8 = 0.8
         OmegaM = 0.315
         sig_v = 150.
     f_restart.close()
@@ -72,7 +72,7 @@ dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
     start_time=time.time()
-    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"A":A, "OmegaM": OmegaM, "sig_v":sig_v}, grad_psi_kwargs={"A":A, "OmegaM":OmegaM, "sig_v":sig_v})
+    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"sigma8":sigma8, "OmegaM": OmegaM, "sig_v":sig_v}, grad_psi_kwargs={"sigma8":sigma8, "OmegaM":OmegaM, "sig_v":sig_v})
     print("ln_prob: %2.4f"%(ln_prob))
     if(acc):
         print("Accepted")
@@ -83,12 +83,12 @@ for i in range(N_START, N_START + N_MCMC):
     print("Current acceptance rate: %2.3f"%(acceptance_rate))
     if(sample_cosmology):
         print("Sampling cosmology...")
-        A = s8_sampler.sample_one_step(A, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM})
-        OmegaM = Om_sampler.sample_one_step(OmegaM, lnprob_kwargs={"delta_k":delta_k, "A":A, "sig_v":sig_v})
-        print("A: %2.4f, OmegaM:%2.4f"%(A, OmegaM))
+        sigma8 = s8_sampler.sample_one_step(sigma8, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM})
+        OmegaM = Om_sampler.sample_one_step(OmegaM, lnprob_kwargs={"delta_k":delta_k, "sigma8":sigma8, "sig_v":sig_v})
+        print("sigma8: %2.4f, OmegaM:%2.4f"%(sigma8, OmegaM))
     if(sample_sigv):
         print("Sample sig_v...")
-        sig_v = sigv_sampler.sample_one_step(sig_v, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM, "A":A})
+        sig_v = sigv_sampler.sample_one_step(sig_v, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM, "sigma8":sigma8})
         print("sig_v: %2.2f"%(sig_v))
     if(i%N_SAVE==0):
         print('=============')
@@ -98,7 +98,7 @@ for i in range(N_START, N_START + N_MCMC):
         f = h5.File(savedir + '/mcmc_'+str(j)+'.h5', 'w')
         f['delta_k'] = delta_k
         f['ln_prob'] = ln_prob
-        f['A'] = A
+        f['sigma8'] = sigma8
         f['OmegaM'] = OmegaM
         f['sig_v'] = sig_v
         f.close()
@@ -107,7 +107,7 @@ for i in range(N_START, N_START + N_MCMC):
         f = h5.File(savedir+'/restart.h5', 'w')
         f['delta_k'] = delta_k
         f['N_STEP'] = i
-        f['A'] = A
+        f['sigma8'] = sigma8
         f['OmegaM'] = OmegaM
         f['sig_v'] = sig_v
         f.close()
