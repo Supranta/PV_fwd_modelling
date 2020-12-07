@@ -9,6 +9,7 @@ from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.samplers.slice import SliceSampler
 from fwd_PV.tools.cosmo import camb_PS
 from fwd_PV.io import process_datafile, process_config, config_fwd_lkl, config_Pk
+from jax import jit
 from jax.config import config
 config.update("jax_enable_x64", True)
 
@@ -27,13 +28,10 @@ if(Pk_type=='simple'):
     Pk_data = None
 elif(Pk_type=='camb_interpolate'):
     with h5.File(savedir+'/Pk_arr.h5', 'r') as f:
-        Om_mesh = f['Om_mesh'][:]
-        s8_mesh = f['s8_mesh'][:]
-        i_mesh = f['i_mesh'][:]
-        j_mesh = f['j_mesh'][:]
+        Om_arr = f['Om_arr'][:]
+        s8_arr = f['s8_arr'][:]
         Pk_arr = f['Pk_arr'][:] 
-        factor = f['factor'].value
-    Pk_data = [s8_mesh, Om_mesh, Pk_arr, i_mesh, j_mesh, factor]
+    Pk_data = [s8_arr, Om_arr, Pk_arr]
 
 r_hMpc, e_rhMpc, RA, DEC, z_obs = process_datafile(datafile, 'h5')
 
@@ -51,7 +49,7 @@ if(restart_flag=='INIT'):
     delta_k = density_scaling * VelocityBox.generate_delta_k()
     sigma8 = 0.8
     OmegaM = 0.315
-    sig_v = 160.
+    sig_v = 230.
     N_START = 0
 
 elif(restart_flag=='RESUME'):
@@ -66,15 +64,16 @@ elif(restart_flag=='RESUME'):
     except:
         sigma8 = 0.8
         OmegaM = 0.315
-        sig_v = 160.
+        sig_v = 230.
     f_restart.close()
 
 mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
 density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
+
 accepted = 0
 
 if(sample_cosmology):
-    s8_sampler = SliceSampler(1, VelocityBox.lnprob_s8, 0.03)
+    s8_sampler = SliceSampler(1, VelocityBox.lnprob_s8, 0.1)
     Om_sampler = SliceSampler(1, VelocityBox.lnprob_Om, 0.03)
 if(sample_sigv):
     sigv_sampler = SliceSampler(1, VelocityBox.lnprob_sigv, 10.)
@@ -92,10 +91,13 @@ for i in range(N_START, N_START + N_MCMC):
     acceptance_rate = accepted / (i - N_START + 1)
     print("Current acceptance rate: %2.3f"%(acceptance_rate))
     if(sample_cosmology):
+        start_cosmo_time = time.time()
         print("Sampling cosmology...")
         sigma8 = s8_sampler.sample_one_step(sigma8, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM})
         OmegaM = Om_sampler.sample_one_step(OmegaM, lnprob_kwargs={"delta_k":delta_k, "sigma8":sigma8, "sig_v":sig_v})
         print("sigma8: %2.4f, OmegaM:%2.4f"%(sigma8, OmegaM))
+        end_cosmo_time = time.time()
+        print("Time taken for cosmology sampling: %2.3f"%(end_cosmo_time - start_cosmo_time))
     if(sample_sigv):
         print("Sample sig_v...")
         sig_v = sigv_sampler.sample_one_step(sig_v, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM, "sigma8":sigma8})

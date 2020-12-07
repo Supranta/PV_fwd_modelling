@@ -28,9 +28,9 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.delta_r = np.mean((r[1:] - r[:-1]))
         self.r_hMpc = r_hMpc.reshape((1,-1))
         self.e_rhMpc = e_rhMpc.reshape((1,-1))
-        self.z_cos = z_cos(self.r, self.OmegaM)
+        self.z_cos = z_cos(self.r, 0.315)
         self.cz_obs = (speed_of_light * z_obs).reshape((1,-1))
-        
+ 
     def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS=201):
         r_hat = np.array(SkyCoord(ra=self.RA*u.deg, dec=self.DEC*u.deg).cartesian.xyz)
         r_hat = r_hat.reshape((1,3,-1))
@@ -42,20 +42,20 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.indices = ((cartesian_pos + self.L_BOX / 2.) / self.l).astype(int)
         delta_los = delta_MB[MB_indices[:,0,:], MB_indices[:,1,:], MB_indices[:,2,:]]
         return delta_los
-    
+
     def log_lkl(self, delta_k, OmegaM, sig_v):
         V_r = self.Vr_grid(delta_k, OmegaM)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz_sigv = (cz_pred - self.cz_obs)/sig_v
-        p_r = self.r * self.r * np.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
+        p_r = self.r * self.r * jnp.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
         p_r_norm = np.trapz(p_r, self.r, axis=0)
         exp_delta_cz = jnp.exp(-0.5*delta_cz_sigv**2)/jnp.sqrt(2 * pi * sig_v**2) 
         p_cz = (jnp.trapz(exp_delta_cz * p_r / p_r_norm, self.r, axis=0))
         lkl_ind = jnp.log(p_cz)
         lkl = jnp.sum(-lkl_ind)
         return lkl
-
+    
     def grad_lkl(self, delta_k, OmegaM, sig_v):
         lkl_grad = grad(self.log_lkl, 0)(delta_k, OmegaM, sig_v)
         return jnp.array([-lkl_grad[0], lkl_grad[1]])

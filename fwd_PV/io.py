@@ -12,13 +12,9 @@ def config_Pk(configfile):
     Om_min = float(config['Pk']['Om_min'])
     Om_max = float(config['Pk']['Om_max'])
     
-    As_min = float(config['Pk']['As_min'])
-    As_max = float(config['Pk']['As_max'])
-
-    As_size = int(config['Pk']['As_size'])
     Om_size = int(config['Pk']['Om_size'])
 
-    return savedir, Om_min, Om_max, As_min, As_max, Om_size, As_size
+    return savedir, Om_min, Om_max, Om_size
 
  
 def process_config_analysis(configfile):

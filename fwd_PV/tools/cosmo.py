@@ -36,19 +36,24 @@ def camb_PS():
     
     return kh, pk[0]
 
-def Pk_interpolated(s8, Om, s8_mesh, Om_mesh, Pk_arr, i_mesh, j_mesh, factor):
-    dist = np.sqrt((Om_mesh - Om)**2 + factor * (s8_mesh - s8)**2)
-    dist_min = np.sort(dist.flatten())[:4]
-    weights = (1./dist_min)
-    weights = weights/np.sum(weights)
-    min_inds = np.argsort(dist.flatten())[:4]
+def get_Pk(sigma8, OmegaM, s8_arr, Om_arr, Pk_arr):
+    Om_min = np.min(Om_arr)
+    Om_max = np.max(Om_arr)
     
-    Om_mins = Om_mesh.flatten()[min_inds]
-    sig8_mins = s8_mesh.flatten()[min_inds]
-    i_ind = i_mesh.flatten()[min_inds]
-    j_ind = j_mesh.flatten()[min_inds]
+    delta_Om = (Om_arr[1:] - Om_arr[:-1])[0]
     
-    Pk_near = Pk_arr[i_ind, j_ind]
-    Pk_interp = np.sum(weights.reshape(4,1) * Pk_near, axis=0)
+    #if(OmegaM > Om_max):
+    #    return Pk_arr[-1]
     
-    return Pk_interp
+    x = (OmegaM - Om_min)/delta_Om
+
+    i = int(x)
+    s = x%1
+    
+    sigma_fid = (1-s) * s8_arr[i] + s * s8_arr[i+1]
+    Pk = (1-s) * Pk_arr[i] + s * Pk_arr[i+1]
+
+    #print(i, s)
+    #print(sigma8, sigma_fid)    
+    #print(np.mean(Pk / Pk_arr[i]))
+    return (sigma8 / sigma_fid)**2 * Pk 

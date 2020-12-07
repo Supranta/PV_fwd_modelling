@@ -1,4 +1,5 @@
 import numpy as np
+import jax.numpy as jnp
 from scipy.linalg import sqrtm
 
 from . import mcmc_helper as helper
@@ -69,6 +70,7 @@ class HMCSampler(object):
             self.grad_psi_kwargs=grad_psi_kwargs
         p = np.random.normal(np.zeros(self.ndim), np.sqrt(self.Hamiltonian_mass))
         p[:, 0, 0, 0] = 0.
+        p = jnp.array(p)
         H_old = self.Hamiltonian(x_old, p)
 
         dt = np.random.uniform(0, time_step)
