@@ -101,6 +101,7 @@ class ForwardModelledVelocityBox:
         return self.grad_prior(delta_k, sigma8, OmegaM) + self.grad_lkl(delta_k, OmegaM, sig_v)
 
     def lnprob_s8(self, sigma8, OmegaM, delta_k):
+        print("sigma8: %2.7f, Omega_m: %2.7f"%(sigma8, OmegaM))
         if((sigma8 < 0.3)or(sigma8 > 1.2)):
             return -np.inf
         if(self.Pk_type=='simple'):
@@ -109,4 +110,5 @@ class ForwardModelledVelocityBox:
         elif(self.Pk_type=='camb_interpolate'):
             delta_k_var = self.Pk_var(sigma8, OmegaM)/ self.V / 2.
         logP = -self.log_prior(delta_k, sigma8, OmegaM)
+        print("logP: %2.3f"%(logP))
         return logP

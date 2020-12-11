@@ -8,7 +8,7 @@ from fwd_PV.fwd_lkl import ForwardLikelihoodBox
 from fwd_PV.samplers.hmc import HMCSampler
 from fwd_PV.samplers.slice import SliceSampler
 from fwd_PV.tools.cosmo import camb_PS
-from fwd_PV.io import process_datafile, process_config, config_fwd_lkl, config_Pk
+from fwd_PV.io import process_datafile, process_config, config_fwd_lkl, config_Pk, get_true_density
 from jax import jit
 from jax.config import config
 config.update("jax_enable_x64", True)
@@ -20,7 +20,8 @@ configfile = sys.argv[2]
 
 N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scale, Pk_type,\
         N_MCMC, dt, N_LEAPFROG,\
-        datafile, savedir, N_SAVE, N_RESTART= process_config(configfile)
+        datafile, savedir, N_SAVE, N_RESTART,\
+        fix_density, true_density_path = process_config(configfile)
 
 assert likelihood == 'chi-squared' or likelihood == 'fwd_lkl', "The likelihood must be chi-squared or forward-likelihood."
 
@@ -45,10 +46,16 @@ elif(likelihood=='fwd_lkl'):
     VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, PV_data, MB_data, smoothing_scale, window, Pk_type, Pk_data)
  
 if(restart_flag=='INIT'):
-    density_scaling = 0.1
-    delta_k = density_scaling * VelocityBox.generate_delta_k()
-    sigma8 = 0.8
-    OmegaM = 0.315
+    #density_scaling = 0.1
+    density_scaling = 1.
+    if(fix_density):
+        delta_k = get_true_density(true_density_path, L_BOX, N_GRID)
+        Vr0 = VelocityBox.Vr_grid(delta_k)
+        print("Mean-std of Vr0: %2.4f, %2.4f"%(np.mean(Vr0), np.std(Vr0)))
+    else:
+        delta_k = density_scaling * VelocityBox.generate_delta_k()
+    sigma8 = 0.78
+    OmegaM = 0.20
     sig_v = 230.
     N_START = 0
 
@@ -62,8 +69,8 @@ elif(restart_flag=='RESUME'):
         OmegaM = f_restart['OmegaM'].value
         sig_v = f_restart['sig_v'].value
     except:
-        sigma8 = 0.8
-        OmegaM = 0.315
+        sigma8 = 0.78
+        OmegaM = 0.20
         sig_v = 230.
     f_restart.close()
 
@@ -74,27 +81,30 @@ accepted = 0
 
 if(sample_cosmology):
     s8_sampler = SliceSampler(1, VelocityBox.lnprob_s8, 0.1)
-    Om_sampler = SliceSampler(1, VelocityBox.lnprob_Om, 0.03)
+    Om_sampler = SliceSampler(1, VelocityBox.lnprob_Om, 0.1)
 if(sample_sigv):
     sigv_sampler = SliceSampler(1, VelocityBox.lnprob_sigv, 10.)
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
-    start_time=time.time()
-    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"sigma8":sigma8, "OmegaM": OmegaM, "sig_v":sig_v}, grad_psi_kwargs={"sigma8":sigma8, "OmegaM":OmegaM, "sig_v":sig_v})
-    print("ln_prob: %2.4f"%(ln_prob))
-    if(acc):
-        print("Accepted")
-        accepted += 1
-    end_time = time.time()
-    print("Time taken: %2.4f"%(end_time - start_time))
-    acceptance_rate = accepted / (i - N_START + 1)
-    print("Current acceptance rate: %2.3f"%(acceptance_rate))
+    if not fix_density:
+        start_time=time.time()
+        delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"sigma8":sigma8, "OmegaM": OmegaM, "sig_v":sig_v}, grad_psi_kwargs={"sigma8":sigma8, "OmegaM":OmegaM, "sig_v":sig_v})
+        print("ln_prob: %2.4f"%(ln_prob))
+        if(acc):
+            print("Accepted")
+            accepted += 1
+        end_time = time.time()
+        print("Time taken: %2.4f"%(end_time - start_time))
+        acceptance_rate = accepted / (i - N_START + 1)
+        print("Current acceptance rate: %2.3f"%(acceptance_rate))
     if(sample_cosmology):
         start_cosmo_time = time.time()
         print("Sampling cosmology...")
+        print("Sampling Omega_m....")
+        OmegaM = Om_sampler.sample_one_step(OmegaM, lnprob_kwargs={"delta_k":delta_k, "sigma8":sigma8, "sig_v":sig_v, "Vr0":Vr0})
+        print("Sampling sigma8....")
         sigma8 = s8_sampler.sample_one_step(sigma8, lnprob_kwargs={"delta_k":delta_k, "OmegaM":OmegaM})
-        OmegaM = Om_sampler.sample_one_step(OmegaM, lnprob_kwargs={"delta_k":delta_k, "sigma8":sigma8, "sig_v":sig_v})
         print("sigma8: %2.4f, OmegaM:%2.4f"%(sigma8, OmegaM))
         end_cosmo_time = time.time()
         print("Time taken for cosmology sampling: %2.3f"%(end_cosmo_time - start_cosmo_time))
@@ -108,8 +118,9 @@ for i in range(N_START, N_START + N_MCMC):
         print('=============')
         j = i//N_SAVE
         f = h5.File(savedir + '/mcmc_'+str(j)+'.h5', 'w')
-        f['delta_k'] = delta_k
-        f['ln_prob'] = ln_prob
+        if not fix_density:
+            f['delta_k'] = delta_k
+            f['ln_prob'] = ln_prob
         f['sigma8'] = sigma8
         f['OmegaM'] = OmegaM
         f['sig_v'] = sig_v
@@ -117,7 +128,8 @@ for i in range(N_START, N_START + N_MCMC):
     if(i%N_RESTART==0):
         print("Saving restart file...")
         f = h5.File(savedir+'/restart.h5', 'w')
-        f['delta_k'] = delta_k
+        if not fix_density:
+            f['delta_k'] = delta_k
         f['N_STEP'] = i
         f['sigma8'] = sigma8
         f['OmegaM'] = OmegaM

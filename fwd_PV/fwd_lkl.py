@@ -31,10 +31,10 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.z_cos = z_cos(self.r, 0.315)
         self.cz_obs = (speed_of_light * z_obs).reshape((1,-1))
  
-    def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS=201):
+    def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS=501):
         r_hat = np.array(SkyCoord(ra=self.RA*u.deg, dec=self.DEC*u.deg).cartesian.xyz)
         r_hat = r_hat.reshape((1,3,-1))
-        r = np.linspace(1., 245., N_POINTS)
+        r = np.linspace(1., 0.5 * self.L_BOX - 1., N_POINTS)
         r = r.reshape((N_POINTS, 1, 1))
         cartesian_pos = (r * r_hat)
         l  = L_BOX_MB / N_GRID_MB
@@ -43,8 +43,11 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         delta_los = delta_MB[MB_indices[:,0,:], MB_indices[:,1,:], MB_indices[:,2,:]]
         return delta_los
 
-    def log_lkl(self, delta_k, OmegaM, sig_v):
-        V_r = self.Vr_grid(delta_k, OmegaM)
+    def log_lkl(self, delta_k, OmegaM, sig_v, Vr0=None):
+        if Vr0 is not None:
+            V_r = Vr0
+        else:
+            V_r = self.Vr_grid(delta_k, OmegaM)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz_sigv = (cz_pred - self.cz_obs)/sig_v
@@ -60,10 +63,10 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         lkl_grad = grad(self.log_lkl, 0)(delta_k, OmegaM, sig_v)
         return jnp.array([-lkl_grad[0], lkl_grad[1]])
 
-    def lnprob_Om(self, OmegaM, delta_k, sigma8, sig_v):
+    def lnprob_Om(self, OmegaM, delta_k, sigma8, sig_v, Vr0=None):
         if((OmegaM < 0.1) or (OmegaM > 0.6)):
             return -np.inf
-        return -self.log_lkl(delta_k, OmegaM, sig_v) + self.lnprob_s8(sigma8, OmegaM, delta_k)
+        return -self.log_lkl(delta_k, OmegaM, sig_v, Vr0) + self.lnprob_s8(sigma8, OmegaM, delta_k)
 
     def lnprob_sigv(self, sig_v, delta_k, OmegaM, sigma8):
         logP = -self.log_lkl(delta_k, OmegaM, sig_v)

@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import jax.numpy as jnp
 import h5py as h5
 import configparser
 
@@ -42,10 +43,14 @@ def process_config(configfile):
     N_GRID = int(config['BOX']['N_GRID'])
     L_BOX  = float(config['BOX']['L_BOX'])
     likelihood = config['BOX']['likelihood']
-    sample_cosmology = bool(config['BOX']['sample_cosmology'].lower()=="true")
+    sample_cosmology = bool(config['COSMOLOGY_SAMPLING']['sample_cosmology'].lower()=="true")
     sample_sigv = bool(config['BOX']['sample_sigv'].lower()=="true")
     window = config['BOX']['window']
     Pk_type = config['BOX']['Pk_type']
+    try:
+        fix_density = bool(config['COSMOLOGY_SAMPLING']['fix_density'].lower()=="true")
+    except:
+        fix_density = False
     try:
         smoothing_scale = float(config['BOX']['smoothing_scale']) 
     except:
@@ -60,9 +65,14 @@ def process_config(configfile):
     N_SAVE = int(config['IO']['N_SAVE'])
     N_RESTART = int(config['IO']['N_RESTART'])
 
+    if(fix_density):
+        true_density_path = config['COSMOLOGY_SAMPLING']['true_density_path']
+    else:
+        None
     return N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scale, Pk_type,\
             N_MCMC, dt, N_LEAPFROG,\
-            datafile, savedir, N_SAVE, N_RESTART 
+            datafile, savedir, N_SAVE, N_RESTART,\
+            fix_density, true_density_path 
 
 
 def process_datafile(datafile, filetype='csv'):
@@ -96,4 +106,13 @@ def config_fwd_lkl(configfile):
     
     return delta_grid, L_BOX, N_GRID
      
-     
+def get_true_density(true_density_path, L, N):
+    l = L / N
+    dV = l**3
+    V = L**3 
+    dens = np.load(true_density_path)
+    print("dens mean-std: %2.4f, %2.4f"%(np.mean(dens), np.std(dens)))
+    delta_k_complex = dV / V * np.fft.rfftn(dens)
+    delta_k = np.array([delta_k_complex.real, delta_k_complex.imag])
+    delta_k[:,0,0,0] = 0.
+    return jnp.array(delta_k)

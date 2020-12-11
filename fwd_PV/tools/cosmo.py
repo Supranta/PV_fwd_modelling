@@ -22,17 +22,20 @@ def mu2r(mu):
 def camb_PS():
     print("Calculating CAMB power spectrum....")
     pars = camb.CAMBparams()
-    pars.set_cosmology(H0=67.5, ombh2=0.022, omch2=0.122)
+    b_frac = 0.022 / 0.122
+    h = 0.7
+    OmegaM = 0.27
+    pars.set_cosmology(H0=100*h, ombh2=b_frac * OmegaM * h**2, omch2=(1. - b_frac) * OmegaM * h**2)
     pars.InitPower.set_params(ns=0.965)
     
-    pars.set_matter_power(redshifts=[0.], kmax=2.0)
+    pars.set_matter_power(redshifts=[0.], kmax=5.0)
 
     results = camb.get_results(pars)
 
     #Non-Linear spectra (Halofit)
     pars.NonLinear = model.NonLinear_both
     results.calc_power_spectra(pars)
-    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-2, maxkh=5., npoints = 2000)
+    kh, _, pk = results.get_matter_power_spectrum(minkh=5e-3, maxkh=5., npoints = 2000)
     
     return kh, pk[0]
 
