@@ -1,15 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py as h5
+import sys, os
+sys.path.append(os.path.abspath('..'))
 from fwd_PV.tools.fft import Fourier_ks
 from fwd_PV.tools.cosmo import camb_PS
 from fwd_PV.io import process_config_analysis
 from math import pi
-import sys
 
 configfile = sys.argv[1]
 
-N_BOX, L, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD, _, _ = process_config_analysis(configfile)
+N_BOX, L, _, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD, _, _ = process_config_analysis(configfile)
 
 try:
     PLOT_LKL = bool(sys.argv[4] == '1')
@@ -56,7 +57,7 @@ if(PLOT_Pk):
 
     _, k_abs = Fourier_ks(N_BOX, l)
 
-    k_bins = np.logspace(np.log10(2 * pi / L), np.log10(2*pi * N_BOX / L), 31)
+    k_bins = np.logspace(np.log10(pi / L), np.log10(2*pi * N_BOX / L), 31)
     k_bincentre = np.sqrt(k_bins[1:]*k_bins[:-1])
 
     Pk_measured_list = []
@@ -76,7 +77,7 @@ if(PLOT_Pk):
     Pk_measured_high = np.percentile(Pk_measured, 84., axis=0)
 
     plt.ylim(3.0e+2, 4.0e+4)
-    plt.xlim(1.e-2, 1.)
+    plt.xlim(5.e-3, 1.)
     plt.loglog(k_bincentre, Pk_measured_mean, color='b')
     plt.fill_between(k_bincentre, Pk_measured_low, Pk_measured_high, color='b', alpha=0.3)
     plt.loglog(kh, pk, 'k', label='CAMB')

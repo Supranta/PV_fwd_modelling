@@ -23,7 +23,7 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.DEC = DEC
         delta_MB, L_BOX_MB, N_GRID_MB = MB_data
         self.los_density = self.get_los_density(delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS)
-        r = np.linspace(1., 245., N_POINTS)
+        r = np.linspace(1., 0.5 * self.L_BOX - 1., N_POINTS)
         self.r = r.reshape((N_POINTS, 1))
         self.delta_r = np.mean((r[1:] - r[:-1]))
         self.r_hMpc = r_hMpc.reshape((1,-1))
@@ -43,11 +43,8 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         delta_los = delta_MB[MB_indices[:,0,:], MB_indices[:,1,:], MB_indices[:,2,:]]
         return delta_los
 
-    def log_lkl(self, delta_k, OmegaM, sig_v, Vr0=None):
-        if Vr0 is not None:
-            V_r = Vr0
-        else:
-            V_r = self.Vr_grid(delta_k, OmegaM)
+    def log_lkl(self, delta_k, OmegaM, sig_v):
+        V_r = self.Vr_grid(delta_k, OmegaM)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz_sigv = (cz_pred - self.cz_obs)/sig_v
@@ -63,10 +60,10 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         lkl_grad = grad(self.log_lkl, 0)(delta_k, OmegaM, sig_v)
         return jnp.array([-lkl_grad[0], lkl_grad[1]])
 
-    def lnprob_Om(self, OmegaM, delta_k, sigma8, sig_v, Vr0=None):
+    def lnprob_Om(self, OmegaM, delta_k, sigma8, sig_v):
         if((OmegaM < 0.1) or (OmegaM > 0.6)):
             return -np.inf
-        return -self.log_lkl(delta_k, OmegaM, sig_v, Vr0) + self.lnprob_s8(sigma8, OmegaM, delta_k)
+        return -self.log_lkl(delta_k, OmegaM, sig_v) + self.lnprob_s8(sigma8, OmegaM, delta_k)
 
     def lnprob_sigv(self, sig_v, delta_k, OmegaM, sigma8):
         logP = -self.log_lkl(delta_k, OmegaM, sig_v)

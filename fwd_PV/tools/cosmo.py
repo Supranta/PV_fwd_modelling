@@ -4,6 +4,15 @@ from camb import model, initialpower
 
 speed_of_light = 299792
 
+h = 0.675
+OmegaM = 0.315
+ns = 0.965
+baryon_frac = 0.022 / 0.122
+kmax = 5.
+kmin = 5e-3
+#As = 2.1e-9
+As = 2.3e-9
+
 def z_cos(r_hMpc, Omega_m):
     Omega_L = 1. - Omega_m
     q0 = Omega_m/2.0 - Omega_L
@@ -22,20 +31,19 @@ def mu2r(mu):
 def camb_PS():
     print("Calculating CAMB power spectrum....")
     pars = camb.CAMBparams()
-    b_frac = 0.022 / 0.122
-    h = 0.7
-    OmegaM = 0.27
-    pars.set_cosmology(H0=100*h, ombh2=b_frac * OmegaM * h**2, omch2=(1. - b_frac) * OmegaM * h**2)
-    pars.InitPower.set_params(ns=0.965)
+    
+    pars.set_cosmology(H0=100*h, ombh2=baryon_frac * OmegaM * h**2, omch2=(1. - baryon_frac) * OmegaM * h**2)
+    pars.InitPower.set_params(As=As, ns=ns)
     
     pars.set_matter_power(redshifts=[0.], kmax=5.0)
 
     results = camb.get_results(pars)
-
+    sigma8 = results.get_sigma8()[0]
+    print("Sigma8 is %2.4f"%(sigma8))
     #Non-Linear spectra (Halofit)
     pars.NonLinear = model.NonLinear_both
     results.calc_power_spectra(pars)
-    kh, _, pk = results.get_matter_power_spectrum(minkh=5e-3, maxkh=5., npoints = 2000)
+    kh, _, pk = results.get_matter_power_spectrum(minkh=kmin, maxkh=kmax, npoints = 5000)
     
     return kh, pk[0]
 

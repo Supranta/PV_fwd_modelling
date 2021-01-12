@@ -26,15 +26,19 @@ if(PROCESS_3D_V_DELTA):
         print(i)
         with h5.File(savedir+'/mcmc_'+str(i)+'.h5','r+') as f:
             delta_k = f['delta_k'][:]
+            try:
+                OmegaM = f['OmegaM'].value
+            except:
+                OmegaM = 0.315
             is_delta_3d_in_f = ('delta_3d' in f)
             is_Vr_in_f = ('Vr' in f)
-            if(~is_delta_3d_in_f):
+            if not is_delta_3d_in_f:
                 print('Calculating delta_3d')
                 delta_3d = InferenceBox.get_delta_grid(delta_k)
                 f['delta_3d'] = delta_3d
-            if(~is_Vr_in_f):
+            if not is_Vr_in_f:
                 print('Calculating Vr')
-                Vr = InferenceBox.Vr_grid(delta_k)   
+                Vr = InferenceBox.Vr_grid(delta_k, OmegaM)   
                 f['Vr'] = Vr
 
 
