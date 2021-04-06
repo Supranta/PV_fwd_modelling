@@ -13,8 +13,8 @@ from fwd_PV.velocity_box import ForwardModelledVelocityBox
 EPS = 1e-50
 
 class ForwardLikelihoodBox(ForwardModelledVelocityBox):
-    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, smoothing_scale, window, Pk_type, N_POINTS=501):
-        super().__init__(N_SIDE, L_BOX, kh, pk, smoothing_scale, window, Pk_type)
+    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, N_POINTS=501):
+        super().__init__(N_SIDE, L_BOX, kh, pk)
         r_hMpc, e_rhMpc, RA, DEC, z_obs = PV_data
         r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
         self.r_hat = r_hat
@@ -43,27 +43,19 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         delta_los = delta_MB[MB_indices[:,0,:], MB_indices[:,1,:], MB_indices[:,2,:]]
         return delta_los
     
-    def log_lkl(self, delta_k, sigma8, OmegaM, sig_v):
-        A = sigma8 / self.sigma8_fid
-        V_r = A * self.Vr_grid(delta_k, OmegaM)
+    def log_lkl(self, delta_k):
+        V_r = self.Vr_grid(delta_k)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
-        delta_cz_sigv = (cz_pred - self.cz_obs)/sig_v
+        delta_cz_sigv = (cz_pred - self.cz_obs)/self.sig_v
         p_r = self.r * self.r * np.exp(-0.5 * ((self.r - self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
         p_r_norm = np.trapz(p_r, self.r, axis=0)
-        exp_delta_cz = jnp.exp(-0.5*delta_cz_sigv**2)/jnp.sqrt(2 * pi * sig_v**2) 
+        exp_delta_cz = jnp.exp(-0.5*delta_cz_sigv**2)/jnp.sqrt(2 * pi * self.sig_v**2) 
         p_cz = (jnp.trapz(exp_delta_cz * p_r / p_r_norm, self.r, axis=0))
         lkl_ind = jnp.log(p_cz)
         lkl = jnp.sum(-lkl_ind)
         return lkl
 
-    def grad_lkl(self, delta_k, sigma8, OmegaM, sigv):
-        lkl_grad = grad(self.log_lkl, 0)(delta_k, sigma8, OmegaM, sigv)
+    def grad_lkl(self, delta_k):
+        lkl_grad = grad(self.log_lkl, 0)(delta_k)
         return jnp.array([-lkl_grad[0], lkl_grad[1]])
-
-    def lnprob_Om(self, OmegaM, delta_k, sigma8, sig_v):
-        return -self.log_lkl(delta_k, sigma8, OmegaM, sig_v) + self.lnprob_s8(sigma8, OmegaM, delta_k)
-
-    def lnprob_sigv(self, sig_v, delta_k, OmegaM, sigma8):
-        logP = -self.log_lkl(delta_k, sigma8, OmegaM, sig_v)
-        return logP

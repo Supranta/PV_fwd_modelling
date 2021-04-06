@@ -10,9 +10,10 @@ config.update("jax_enable_x64", True)
 from fwd_PV.velocity_box import ForwardModelledVelocityBox
 
 class ChiSquared(ForwardModelledVelocityBox):
-    def __init__(self, N_SIDE, L_BOX, kh, pk, r_hMpc, e_rhMpc, RA, DEC, z_obs, smooth_R):
+    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data):
         super().__init__(N_SIDE, L_BOX, kh, pk, smooth_R)
         r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
+        r_hMpc, e_rhMpc, RA, DEC, z_obs = PV_data
         self.r_hat = r_hat
         self.sigmad = e_rhMpc * 100.
         print("Mean sigma_d: %2.4f"%(np.mean(e_rhMpc * 100)))

@@ -3,69 +3,36 @@ import numpy as np
 import h5py as h5
 import configparser
 
-def config_Pk(configfile):
+def config_box(configfile):
     config = configparser.ConfigParser()
     config.read(configfile)
-
-    savedir  = config['IO']['savedir']
-
-    Om_min = float(config['Pk']['Om_min'])
-    Om_max = float(config['Pk']['Om_max'])
     
-    As_min = float(config['Pk']['As_min'])
-    As_max = float(config['Pk']['As_max'])
-
-    As_size = int(config['Pk']['As_size'])
-    Om_size = int(config['Pk']['Om_size'])
-
-    return savedir, Om_min, Om_max, As_min, As_max, Om_size, As_size
-
- 
-def process_config_analysis(configfile):
-    config = configparser.ConfigParser()
-    config.read(configfile)
-
-    N_GRID = int(config['BOX']['N_GRID'])
-    L_BOX  = float(config['BOX']['L_BOX'])
-
-    savedir  = config['IO']['savedir']
-
-    PROCESS_3D_V_DELTA = bool(config['ANALYSIS']['process_3d_v_delta'].lower() == "true")
-    CALCULATE_MEAN_STD = bool(config['ANALYSIS']['calculate_mean_std'].lower() == "true")
-   
-    window = config['BOX']['window']
-    smoothing_scale = float(config['BOX']['smoothing_scale']) 
-    
-    return N_GRID, L_BOX, savedir, PROCESS_3D_V_DELTA, CALCULATE_MEAN_STD, window, smoothing_scale
-
-def process_config(configfile):
-    config = configparser.ConfigParser()
-    config.read(configfile)
-
     N_GRID = int(config['BOX']['N_GRID'])
     L_BOX  = float(config['BOX']['L_BOX'])
     likelihood = config['BOX']['likelihood']
-    sample_cosmology = bool(config['BOX']['sample_cosmology'].lower()=="true")
-    sample_sigv = bool(config['BOX']['sample_sigv'].lower()=="true")
-    window = config['BOX']['window']
-    Pk_type = config['BOX']['Pk_type']
-    try:
-        smoothing_scale = float(config['BOX']['smoothing_scale']) 
-    except:
-        smoothing_scale = 0. 
+    
+    return N_GRID, L_BOX, likelihood
 
+def config_mcmc(configfile):
+    config = configparser.ConfigParser()
+    config.read(configfile)
+   
     N_MCMC = int(config['MCMC']['N_MCMC'])
     dt     = float(config['MCMC']['dt'])
     N_LEAPFROG = int(config['MCMC']['N_LEAPFROG'])
+    
+    return N_MCMC, dt, N_LEAPFROG
+
+def config_io(configfile):
+    config = configparser.ConfigParser()
+    config.read(configfile)
 
     datafile = config['IO']['datafile']    
     savedir  = config['IO']['savedir']    
     N_SAVE = int(config['IO']['N_SAVE'])
     N_RESTART = int(config['IO']['N_RESTART'])
 
-    return N_GRID, L_BOX, likelihood, sample_cosmology, sample_sigv, window, smoothing_scale, Pk_type,\
-            N_MCMC, dt, N_LEAPFROG,\
-            datafile, savedir, N_SAVE, N_RESTART 
+    return datafile, savedir, N_SAVE, N_RESTART 
 
 
 def process_datafile(datafile, filetype='csv'):
@@ -98,5 +65,18 @@ def config_fwd_lkl(configfile):
     delta_grid = np.load(density_data)
     
     return delta_grid, L_BOX, N_GRID
-     
-     
+          
+def write_save_file(i, N_SAVE, savedir, delta_k, ln_prob):
+    print('=============')
+    print('Saving file...')
+    print('=============')
+    j = i//N_SAVE
+    with h5.File(savedir + '/mcmc_'+str(j)+'.h5', 'w') as f:
+        f['delta_k'] = delta_k
+        f['ln_prob'] = ln_prob
+        
+def write_restart_file(savedir, delta_k, i):
+    print("Saving restart file...")
+    with h5.File(savedir+'/restart.h5', 'w') as f:
+        f['delta_k'] = delta_k
+        f['N_STEP'] = i
