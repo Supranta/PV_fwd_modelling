@@ -8,13 +8,14 @@ import astropy.units as u
 from jax.config import config
 config.update("jax_enable_x64", True)
 
-from fwd_PV.velocity_box import ForwardModelledVelocityBox
+from fwd_PV.velocity_box import ForwardModelledVelocityBox, J
 
 EPS = 1e-50
+sig_v = 230.
 
 class ForwardLikelihoodBox(ForwardModelledVelocityBox):
-    def __init__(self, N_SIDE, L_BOX, PV_data, MB_data, smoothing_scale, window, Pk_type, Pk_data, N_POINTS=501):
-        super().__init__(N_SIDE, L_BOX, smoothing_scale, window, Pk_type, Pk_data)
+    def __init__(self, N_SIDE, L_BOX, PV_data, MB_data, N_POINTS=501):
+        super().__init__(N_SIDE, L_BOX)
         r_hMpc, e_rhMpc, RA, DEC, z_obs = PV_data
         r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
         self.r_hat = r_hat
@@ -59,12 +60,3 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
     def grad_lkl(self, delta_k, OmegaM, sig_v):
         lkl_grad = grad(self.log_lkl, 0)(delta_k, OmegaM, sig_v)
         return jnp.array([-lkl_grad[0], lkl_grad[1]])
-
-    def lnprob_Om(self, OmegaM, delta_k, sigma8, sig_v):
-        if((OmegaM < 0.1) or (OmegaM > 0.6)):
-            return -np.inf
-        return -self.log_lkl(delta_k, OmegaM, sig_v) + self.lnprob_s8(sigma8, OmegaM, delta_k)
-
-    def lnprob_sigv(self, sig_v, delta_k, OmegaM, sigma8):
-        logP = -self.log_lkl(delta_k, OmegaM, sig_v)
-        return logP
