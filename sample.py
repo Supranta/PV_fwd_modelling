@@ -49,13 +49,19 @@ elif(restart_flag=='RESUME'):
     delta_k = f_restart['delta_k'][:]
     f_restart.close()
 
-mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
+try:
+    mass_matrix = np.load(savedir+'/mass_matrix.npy')
+except:
+    mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
 density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
 accepted = 0
 
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
+    print("==================")
+    print("MCM step: %d"%(i))
+    print("==================")
     start_time=time.time()
     delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG)
     print("ln_prob: %2.4f"%(ln_prob))

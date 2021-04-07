@@ -60,11 +60,15 @@ def config_fwd_lkl(configfile):
     N_GRID = int(config['FWD_LKL']['N_BOX_sim'])
     L_BOX  = float(config['FWD_LKL']['L_BOX_sim'])
     
+    try:
+        coord_system  = config['FWD_LKL']['coord_system']
+    except:
+        coord_system = "equatorial"
     density_data = config['FWD_LKL']['density_file']
     print("Loading density data from "+density_data)
     delta_grid = np.load(density_data)
     
-    return delta_grid, L_BOX, N_GRID
+    return delta_grid, L_BOX, N_GRID, coord_system
           
 def write_save_file(i, N_SAVE, savedir, delta_k, ln_prob):
     print('=============')

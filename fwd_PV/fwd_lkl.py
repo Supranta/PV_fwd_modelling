@@ -16,13 +16,16 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
     def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, N_POINTS=501):
         super().__init__(N_SIDE, L_BOX, kh, pk)
         r_hMpc, e_rhMpc, RA, DEC, z_obs = PV_data
-        r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
+        delta_MB, L_BOX_MB, N_GRID_MB, coord_system = MB_data
+        if(coord_system=="equatorial"):
+            r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
+        elif(coord_system=="galactic"):
+            r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).galactic.cartesian.xyz)
         self.r_hat = r_hat
         self.sigmad = e_rhMpc * 100.
         self.RA  = RA
-        self.DEC = DEC
-        delta_MB, L_BOX_MB, N_GRID_MB = MB_data
-        self.los_density = self.get_los_density(delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS)
+        self.DEC = DEC        
+        self.los_density = self.get_los_density(delta_MB, L_BOX_MB, N_GRID_MB, coord_system, N_POINTS)        
         r = np.linspace(1., 245., N_POINTS)
         self.r = r.reshape((N_POINTS, 1))
         self.delta_r = np.mean((r[1:] - r[:-1]))
@@ -31,8 +34,11 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.z_cos = z_cos(self.r, self.OmegaM)
         self.cz_obs = (speed_of_light * z_obs).reshape((1,-1))
         
-    def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, N_POINTS=201):
-        r_hat = np.array(SkyCoord(ra=self.RA*u.deg, dec=self.DEC*u.deg).cartesian.xyz)
+    def get_los_density(self, delta_MB, L_BOX_MB, N_GRID_MB, coord_system, N_POINTS=201):
+        if(coord_system=="equatorial"):
+            r_hat = np.array(SkyCoord(ra=self.RA*u.deg, dec=self.DEC*u.deg).cartesian.xyz)
+        elif(coord_system=="galactic"):
+            r_hat = np.array(SkyCoord(ra=self.RA*u.deg, dec=self.DEC*u.deg).galactic.cartesian.xyz)
         r_hat = r_hat.reshape((1,3,-1))
         r = np.linspace(1., 245., N_POINTS)
         r = r.reshape((N_POINTS, 1, 1))
