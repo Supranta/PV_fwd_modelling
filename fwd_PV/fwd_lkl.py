@@ -57,5 +57,6 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         return lkl
 
     def grad_lkl(self, delta_k):
-        lkl_grad = grad(self.log_lkl, 0)(delta_k)
-        return jnp.array([-lkl_grad[0], lkl_grad[1]])
+        lkl_grad = -grad(self.log_lkl, 0)(delta_k)
+        return lkl_grad
+#         return jnp.array([-lkl_grad[0], lkl_grad[1]])

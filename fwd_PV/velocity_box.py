@@ -33,6 +33,9 @@ class ForwardModelledVelocityBox:
         Pk_3d[select_positive_k] = self.Pk_interp(k_abs[select_positive_k])
         return jnp.array(Pk_3d)
 
+    def symmetrize_fourier(self, F_x):
+        return jnp.fft.rfftn(jnp.fft.irfftn(F_x).real)
+        
     def generate_delta_k(self):
         delta_k_real = np.random.normal(0., np.sqrt(self.Pk_3d / self.V / 2))
         delta_k_imag = np.random.normal(0., np.sqrt(self.Pk_3d / self.V / 2))
@@ -40,15 +43,23 @@ class ForwardModelledVelocityBox:
         delta_k_real[0,0,0] = 0.
         delta_k_imag[0,0,0] = 0. 
         
+        delta_k_complex = delta_k_real + self.J * delta_k_imag
+        delta_k_complex = self.symmetrize_fourier(delta_k_complex)
+        
+        delta_k_real = delta_k_complex.real
+        delta_k_imag = delta_k_complex.imag
+        
         return jnp.array([delta_k_real, delta_k_imag])
 
     def get_delta_grid(self, delta_k):
         delta_k_complex = delta_k[0] + self.J * delta_k[1]
+        delta_k_complex = self.symmetrize_fourier(delta_k_complex)
         delta_x = self.V / self.dV * jnp.fft.irfftn(delta_k_complex)
         return delta_x
     
     def Vr_grid(self, delta_k):
         delta_k_complex = delta_k[0] + self.J * delta_k[1]
+        delta_k_complex = self.symmetrize_fourier(delta_k_complex)
         
         f = self.f
 
