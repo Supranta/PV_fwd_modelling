@@ -49,11 +49,13 @@ elif(restart_flag=='RESUME'):
     delta_k = f_restart['delta_k'][:]
     f_restart.close()
 
-try:
-    mass_matrix = np.load(savedir+'/mass_matrix.npy')
-except:
-    mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
+# try:
+#     mass_matrix = np.load(savedir+'/mass_matrix.npy')
+# except:
+#     mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
+mass_matrix = 2. * VelocityBox.V / VelocityBox.Pk_3d
 density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
+# density_sampler = HMCSampler(delta_k.shape, VelocityBox.log_prior, VelocityBox.grad_prior, mass_matrix, verbose=True)
 accepted = 0
 
 dt = dt

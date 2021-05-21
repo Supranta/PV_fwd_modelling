@@ -31,3 +31,17 @@ def grid_r_hat(N_BOX):
     R_hat = R_vec / np.linalg.norm(R_vec, axis=0)
     
     return jnp.array(R_hat)
+
+def get_zero_imag_mask(N):
+    x = np.random.normal(size=(N, N, N))
+    Fx = np.fft.rfftn(x)
+    select_zero_imag = (Fx.imag == 0.)
+    assert np.sum(select_zero_imag)==8, "Something wrong with the zero_imag_mask"
+    return select_zero_imag
+
+def get_Fourier_mask(N):
+    N_Y = N//2+1
+    Fourier_mask = np.ones((N,N,N_Y))
+    Fourier_mask[:,N_Y,0] = 0.
+    Fourier_mask[:,N_Y,-1] = 0.
+    return Fourier_mask
