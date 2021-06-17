@@ -20,8 +20,12 @@ def config_mcmc(configfile):
     N_MCMC = int(config['MCMC']['N_MCMC'])
     dt     = float(config['MCMC']['dt'])
     N_LEAPFROG = int(config['MCMC']['N_LEAPFROG'])
+    try:
+        sample_scale = bool(config['MCMC']['sample_scale'].lower()=="true")
+    except:
+        sample_scale = False
     
-    return N_MCMC, dt, N_LEAPFROG
+    return N_MCMC, dt, N_LEAPFROG, sample_scale
 
 def config_io(configfile):
     config = configparser.ConfigParser()
@@ -71,7 +75,7 @@ def config_fwd_lkl(configfile):
     
     return delta_grid, L_BOX, N_GRID, coord_system, R_lim
           
-def write_save_file(i, N_SAVE, savedir, delta_k, ln_prob):
+def write_save_file(i, N_SAVE, savedir, delta_k, ln_prob, scale):
     print('=============')
     print('Saving file...')
     print('=============')
@@ -79,9 +83,11 @@ def write_save_file(i, N_SAVE, savedir, delta_k, ln_prob):
     with h5.File(savedir + '/mcmc_'+str(j)+'.h5', 'w') as f:
         f['delta_k'] = delta_k
         f['ln_prob'] = ln_prob
+        f['scale']   = scale
         
-def write_restart_file(savedir, delta_k, i):
+def write_restart_file(savedir, delta_k, i, scale):
     print("Saving restart file...")
     with h5.File(savedir+'/restart.h5', 'w') as f:
         f['delta_k'] = delta_k
-        f['N_STEP'] = i
+        f['N_STEP']  = i
+        f['scale']   = scale

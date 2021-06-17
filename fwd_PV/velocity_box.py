@@ -91,11 +91,11 @@ class ForwardModelledVelocityBox:
     def grad_prior(self, delta_k):
         return grad(self.log_prior, 0)(delta_k)
     
-    def psi(self, delta_k):
-        return self.log_prior(delta_k) + self.log_lkl(delta_k)
+    def psi(self, delta_k, scale):
+        return self.log_prior(delta_k) + self.log_lkl(delta_k, scale)
 
-    def grad_psi(self, delta_k):
-        grad_arr = self.grad_prior(delta_k) + self.grad_lkl(delta_k)
+    def grad_psi(self, delta_k, scale):
+        grad_arr = self.grad_prior(delta_k) + self.grad_lkl(delta_k, scale)
         grad_arr = np.array(grad_arr)
         grad_arr[:,0,0,0] = 0.
         return grad_arr

@@ -5,7 +5,7 @@ import time
 
 from fwd_PV.chi_squared import ChiSquared
 from fwd_PV.fwd_lkl import ForwardLikelihoodBox
-from fwd_PV.samplers.hmc import HMCSampler
+from fwd_PV.samplers import HMCSampler, SliceSampler
 from fwd_PV.tools.cosmo import camb_PS
 import fwd_PV.io as io
 from jax.config import config
@@ -17,7 +17,7 @@ assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1s
 configfile = sys.argv[2]
 
 N_GRID, L_BOX, likelihood = io.config_box(configfile)
-N_MCMC, dt, N_LEAPFROG    = io.config_mcmc(configfile)
+N_MCMC, dt, N_LEAPFROG, sample_scale    = io.config_mcmc(configfile)
 datafile, savedir, N_SAVE, N_RESTART = io.config_io(configfile)
 
 assert likelihood == 'chi-squared' or likelihood == 'fwd_lkl', "The likelihood must be chi-squared or forward-likelihood."
@@ -40,6 +40,7 @@ sig_v = 150.
 if(restart_flag=='INIT'):
     density_scaling = 0.1
     delta_k = density_scaling * VelocityBox.generate_delta_k()    
+    scale = 1.
     N_START = 0
 
 elif(restart_flag=='RESUME'):
@@ -47,34 +48,40 @@ elif(restart_flag=='RESUME'):
     f_restart = h5.File(savedir+'/restart.h5', 'r')
     N_START = f_restart['N_STEP'].value
     delta_k = f_restart['delta_k'][:]
+    try:
+        scale   = f_restart['scale'].value
+    except:
+        scale = 1.
     f_restart.close()
 
-# try:
-#     mass_matrix = np.load(savedir+'/mass_matrix.npy')
-# except:
-#     mass_matrix = np.array([2. * VelocityBox.V / VelocityBox.Pk_3d, 2. * VelocityBox.V / VelocityBox.Pk_3d])
 mass_matrix = 2. * VelocityBox.V / VelocityBox.Pk_3d
 density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
-# density_sampler = HMCSampler(delta_k.shape, VelocityBox.log_prior, VelocityBox.grad_prior, mass_matrix, verbose=True)
 accepted = 0
 
+if(sample_scale):
+    scale_sampler = SliceSampler(1, VelocityBox.log_lkl_scale, 0.01)
+    
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
     print("==================")
-    print("MCM step: %d"%(i))
+    print("MCMC step: %d"%(i))
     print("==================")
     start_time=time.time()
-    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG)
-    print("ln_prob: %2.4f"%(ln_prob))
+    delta_k, ln_prob, acc = density_sampler.sample_one_step(delta_k, dt, N_LEAPFROG, psi_kwargs={"scale": scale}, grad_psi_kwargs={"scale": scale})
+    print("ln_prob: %2.4f"%(ln_prob))    
     if(acc):
         print("Accepted")
-        accepted += 1
+        accepted += 1    
     end_time = time.time()
     print("Time taken: %2.4f seconds"%(end_time - start_time))
     acceptance_rate = accepted / (i - N_START + 1)
     print("Current acceptance rate: %2.3f"%(acceptance_rate))
     if(i%N_SAVE==0):
-        io.write_save_file(i, N_SAVE, savedir, delta_k, ln_prob)
+        io.write_save_file(i, N_SAVE, savedir, delta_k, ln_prob, scale)
+    if(sample_scale):
+        print("Sampling scale...")
+        scale = scale_sampler.sample_one_step(scale, lnprob_kwargs={"delta_k": delta_k})
+        print("scale: %2.3f"%(scale))
     if(i%N_RESTART==0):
-        io.write_restart_file(savedir, delta_k, i)
+        io.write_restart_file(savedir, delta_k, i, scale)
