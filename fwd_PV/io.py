@@ -10,8 +10,13 @@ def config_box(configfile):
     N_GRID = int(config['BOX']['N_GRID'])
     L_BOX  = float(config['BOX']['L_BOX'])
     likelihood = config['BOX']['likelihood']
-    
-    return N_GRID, L_BOX, likelihood
+    try:
+        coord_system_box = config['BOX']['coord']
+    except:
+        print('No coord system found...Using galactic coordinate as default...')
+        coord_system_box = 'galactic'
+
+    return N_GRID, L_BOX, likelihood, coord_system_box
 
 def config_mcmc(configfile):
     config = configparser.ConfigParser()

@@ -16,7 +16,7 @@ assert restart_flag == 'INIT' or restart_flag == 'RESUME', "The restart flag (1s
 
 configfile = sys.argv[2]
 
-N_GRID, L_BOX, likelihood = io.config_box(configfile)
+N_GRID, L_BOX, likelihood, coord_system_box = io.config_box(configfile)
 N_MCMC, dt, N_LEAPFROG, sample_scale    = io.config_mcmc(configfile)
 datafile, savedir, N_SAVE, N_RESTART = io.config_io(configfile)
 
@@ -32,7 +32,7 @@ if(likelihood=='chi-squared'):
 elif(likelihood=='fwd_lkl'):
     print("Initializing fwd_lkl Velocity Box....")    
     MB_data = io.config_fwd_lkl(configfile)
-    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data)
+    VelocityBox = ForwardLikelihoodBox(N_GRID, L_BOX, kh, pk, PV_data, MB_data, coord_system_box)
 
 OmegaM = 0.315
 sig_v = 150.    
@@ -55,6 +55,7 @@ elif(restart_flag=='RESUME'):
     f_restart.close()
 
 mass_matrix = 2. * VelocityBox.V / VelocityBox.Pk_3d
+#mass_matrix = np.load(savedir+'/mass_matrix.npy')
 density_sampler = HMCSampler(delta_k.shape, VelocityBox.psi, VelocityBox.grad_psi, mass_matrix, verbose=True)
 accepted = 0
 

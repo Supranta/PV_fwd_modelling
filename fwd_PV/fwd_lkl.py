@@ -1,7 +1,8 @@
 from math import pi
 import numpy as np
 import jax.numpy as jnp
-from jax import grad
+from jax import grad, jit
+from functools import partial
 from .tools.cosmo import z_cos, speed_of_light
 from astropy.coordinates import SkyCoord
 import astropy.units as u
@@ -13,21 +14,24 @@ from fwd_PV.velocity_box import ForwardModelledVelocityBox
 EPS = 1e-50
 
 class ForwardLikelihoodBox(ForwardModelledVelocityBox):
-    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, N_POINTS=201):
+    def __init__(self, N_SIDE, L_BOX, kh, pk, PV_data, MB_data, coord_system_box, N_POINTS=201):
         super().__init__(N_SIDE, L_BOX, kh, pk)
         r_hMpc, e_rhMpc, RA, DEC, z_obs = PV_data
-        delta_MB, L_BOX_MB, N_GRID_MB, coord_system, R_lim = MB_data
-        if(coord_system=="equatorial"):
+        delta_MB, L_BOX_MB, N_GRID_MB, coord_system_MB, R_lim = MB_data
+        if(coord_system_box=="equatorial"):
             r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).cartesian.xyz)
-        elif(coord_system=="galactic"):
+        elif(coord_system_box=="galactic"):
             print("Using galactic coordinates...")
             r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).galactic.cartesian.xyz)
+        elif(coord_system_box=="supergalactic"):
+            print("Using supergalactic coordinates...")
+            r_hat = np.array(SkyCoord(ra=RA * u.deg, dec=DEC * u.deg).supergalactic.cartesian.xyz)
         self.r_hat = r_hat
         self.sigmad = e_rhMpc * 100.
         self.RA  = RA
         self.DEC = DEC        
         self.R_lim = R_lim
-        self.los_density = self.get_los_density(delta_MB, L_BOX_MB, N_GRID_MB, coord_system, N_POINTS)                
+        self.los_density = self.get_los_density(delta_MB, L_BOX_MB, N_GRID_MB, coord_system_MB, N_POINTS)                
         r = np.linspace(1., self.R_lim, N_POINTS)
         self.r = r.reshape((N_POINTS, 1))
         self.delta_r = np.mean((r[1:] - r[:-1]))
@@ -45,20 +49,23 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         r_hat = r_hat.reshape((1,3,-1))
         r = np.linspace(1., self.R_lim, N_POINTS)
         r = r.reshape((N_POINTS, 1, 1))
-        cartesian_pos = (r * r_hat)
+        cartesian_pos_MB = (r * r_hat)
         l  = L_BOX_MB / N_GRID_MB
-        MB_indices = ((cartesian_pos + L_BOX_MB / 2.) / l).astype(int)
-        self.indices = ((cartesian_pos + self.L_BOX / 2.) / self.l).astype(int)
+        MB_indices = ((cartesian_pos_MB + L_BOX_MB / 2.) / l).astype(int)
         delta_los = delta_MB[MB_indices[:,0,:], MB_indices[:,1,:], MB_indices[:,2,:]]
+        
+        cartesian_pos = (r * self.r_hat)
+        self.indices = ((cartesian_pos + self.L_BOX / 2.) / self.l).astype(int)
         return delta_los
     
+    @partial(jit, static_argnums=(0,))
     def log_lkl(self, delta_k, scale=1.):
         V_r = self.Vr_grid(delta_k)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz_sigv = (cz_pred - self.cz_obs)/self.sig_v
-        p_r = self.r * self.r * np.exp(-0.5 * ((self.r - scale * self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
-        p_r_norm = np.trapz(p_r, self.r, axis=0)
+        p_r = self.r * self.r * jnp.exp(-0.5 * ((self.r - scale * self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
+        p_r_norm = jnp.trapz(p_r, self.r, axis=0)
         exp_delta_cz = jnp.exp(-0.5*delta_cz_sigv**2)/jnp.sqrt(2 * pi * self.sig_v**2) 
         p_cz = (jnp.trapz(exp_delta_cz * p_r / p_r_norm, self.r, axis=0))
         lkl_ind = jnp.log(p_cz)
@@ -68,7 +75,7 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
     def log_lkl_scale(self, scale, delta_k):
         return -self.log_lkl(delta_k, scale)
     
+    @partial(jit, static_argnums=(0,))
     def grad_lkl(self, delta_k, scale=1.):
         lkl_grad = -grad(self.log_lkl, 0)(delta_k, scale)
-#         return lkl_grad
         return jnp.array([lkl_grad[0], -lkl_grad[1]])
