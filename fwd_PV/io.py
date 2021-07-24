@@ -36,13 +36,30 @@ def config_io(configfile):
     config = configparser.ConfigParser()
     config.read(configfile)
 
-    datafile = config['IO']['datafile']    
     savedir  = config['IO']['savedir']    
     N_SAVE = int(config['IO']['N_SAVE'])
     N_RESTART = int(config['IO']['N_RESTART'])
 
-    return datafile, savedir, N_SAVE, N_RESTART 
+    return savedir, N_SAVE, N_RESTART 
 
+def config_data(configfile):
+    config = configparser.ConfigParser()
+    config.read(configfile)
+
+    N_CAT  = int(config['DATA']['N_CAT'])    
+    data_arr = None
+    data_len = []
+    for i in range(N_CAT):
+        datafile = config['DATA']['datafile%d'%(i)]
+        PV_data = process_datafile(datafile, 'h5')
+        if data_arr is None:
+            data_arr = PV_data
+        else: 
+            data_arr = np.hstack([data_arr, PV_data])
+        data_len.append(PV_data.shape[1])
+    print("data_arr.shape: "+str(data_arr.shape))
+    print("data_len: "+str(data_len))
+    return N_CAT, data_arr, data_len
 
 def process_datafile(datafile, filetype='csv'):
     if(filetype=='csv'):
@@ -59,8 +76,8 @@ def process_datafile(datafile, filetype='csv'):
             RA     = f['RA'][:]
             DEC    = f['DEC'][:]
             z_obs  = f['z_obs'][:]
-
-    return r_hMpc, e_r_hMpc, RA, DEC, z_obs
+    PV_data = np.array([r_hMpc, e_r_hMpc, RA, DEC, z_obs])
+    return PV_data
 
 def config_fwd_lkl(configfile):
     config = configparser.ConfigParser()

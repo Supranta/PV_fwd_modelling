@@ -1,6 +1,7 @@
 from math import pi
 import numpy as np
 import jax.numpy as jnp
+import jax
 from jax import grad, jit
 from functools import partial
 from .tools.cosmo import z_cos, speed_of_light
@@ -58,13 +59,25 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         self.indices = ((cartesian_pos + self.L_BOX / 2.) / self.l).astype(int)
         return delta_los
     
-    @partial(jit, static_argnums=(0,))
-    def log_lkl(self, delta_k, scale=1.):
+#     @partial(jit, static_argnums=(0,))
+    def get_scale_arr(self, scale):
+        scale_arr = jnp.ones(jnp.sum(self.data_len))
+        index_end   = jnp.cumsum(self.data_len)
+        index_start = jnp.hstack([jnp.array([0]),index_end[:-1]])
+        for i in range(self.N_CAT):
+            index_slice = jax.ops.index[index_start[i]:index_end[i]]
+            scale_updated = scale[i] * scale_arr[index_slice]
+            scale_arr = jax.ops.index_update(scale_arr, index_slice, scale_updated)
+        return scale_arr
+    
+#     @partial(jit, static_argnums=(0,))
+    def log_lkl(self, delta_k, scale):
         V_r = self.Vr_grid(delta_k)
         Vr_los = V_r[self.indices[:,0,:], self.indices[:,1,:], self.indices[:,2,:]]
         cz_pred = speed_of_light * self.z_cos + (1. + self.z_cos) * Vr_los
         delta_cz_sigv = (cz_pred - self.cz_obs)/self.sig_v
-        p_r = self.r * self.r * jnp.exp(-0.5 * ((self.r - scale * self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
+        scale_arr = self.get_scale_arr(scale)
+        p_r = self.r * self.r * jnp.exp(-0.5 * ((self.r - scale_arr * self.r_hMpc)/self.e_rhMpc)**2) * (1. + self.los_density)
         p_r_norm = jnp.trapz(p_r, self.r, axis=0)
         exp_delta_cz = jnp.exp(-0.5*delta_cz_sigv**2)/jnp.sqrt(2 * pi * self.sig_v**2) 
         p_cz = (jnp.trapz(exp_delta_cz * p_r / p_r_norm, self.r, axis=0))
@@ -75,7 +88,7 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
     def log_lkl_scale(self, scale, delta_k):
         return -self.log_lkl(delta_k, scale)
     
-    @partial(jit, static_argnums=(0,))
+#     @partial(jit, static_argnums=(0,))
     def grad_lkl(self, delta_k, scale=1.):
         lkl_grad = -grad(self.log_lkl, 0)(delta_k, scale)
         return jnp.array([lkl_grad[0], -lkl_grad[1]])

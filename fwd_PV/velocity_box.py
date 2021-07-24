@@ -114,11 +114,11 @@ class ForwardModelledVelocityBox:
         ln_prior = jnp.sum(0.5 * self.prior_mask * delta_k**2 / delta_k_var)
         return ln_prior
     
-    @partial(jit, static_argnums=(0,))
+#     @partial(jit, static_argnums=(0,))
     def grad_prior(self, delta_k):
         return grad(self.log_prior, 0)(delta_k)
     
-    @partial(jit, static_argnums=(0,))
+#     @partial(jit, static_argnums=(0,))
     def psi(self, delta_k, scale):
         return self.log_prior(delta_k) + self.log_lkl(delta_k, scale)
     
