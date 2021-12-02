@@ -18,9 +18,10 @@ class ForwardModelledVelocityBox:
         self.J = jnp.array(np.complex(0, 1))        
         
         smoothing_scale = 4.
+        self.smooth_R = smoothing_scale 
         self.sig_v      = 150.
         kR = self.k_norm * smoothing_scale
-        self.window = np.exp(-0.5 * kR**2)                
+        self.window = np.exp(-0.5 * kR**2)        
         self.r_hat_grid = grid_r_hat(N_SIDE)        
     
     def get_Pk_3d(self):
@@ -49,34 +50,38 @@ class ForwardModelledVelocityBox:
 
         return np.sqrt(self.Pk_3d / self.V) * np.array([delta_k.real, delta_k.imag])
     
-    def get_delta_grid(self, delta_k, smooth_R = None):
-        delta_k = self.symmetrize(delta_k)
-        delta_k_complex = delta_k[0] + self.J * delta_k[1]        
+    def get_filter(self, smooth_R):
         if smooth_R is not None:
             kR_sq = (self.k_norm[:,:,:self.N_Z] * smooth_R)**2
         else:
             kR_sq = 0.
-        delta_x = self.V / self.dV * jnp.fft.irfftn(delta_k_complex * jnp.exp(-0.5 * kR_sq))
+        return jnp.exp(-0.5 * kR_sq)
+        
+    def get_delta_grid(self, delta_k, smooth_R = None):
+        delta_k = self.symmetrize(delta_k)
+        delta_k_complex = delta_k[0] + self.J * delta_k[1]                
+        k_filter = self.get_filter(smooth_R)
+        delta_x = self.V / self.dV * jnp.fft.irfftn(delta_k_complex * k_filter)
         return delta_x
     
     def fwd_fourier(self, x):
         delta_k_complex = self.dV / self.V * jnp.fft.rfftn(x) 
         return jnp.array([delta_k_complex.real, delta_k_complex.imag])
     
-#     @partial(jit, static_argnums=(0,))
+    @partial(jit, static_argnums=(0,))
     def Vr_grid(self, delta_k, smooth_R=0.):
         delta_k = self.symmetrize(delta_k)
         
         delta_k_complex = delta_k[0] + self.J * delta_k[1]
         
         f = self.f
-
-        kR = self.k_norm * smooth_R
-        smooth_filter = jnp.exp(-0.5 * kR * kR)
-            
-        v_kx = smooth_filter * self.J * 100 * self.window * f * delta_k_complex * self.k[0] / self.k_norm / self.k_norm
-        v_ky = smooth_filter * self.J * 100 * self.window * f * delta_k_complex * self.k[1] / self.k_norm / self.k_norm
-        v_kz = smooth_filter * self.J * 100 * self.window * f * delta_k_complex * self.k[2] / self.k_norm / self.k_norm
+        smooth_filter = self.window
+        
+        k_filter = self.get_filter(smooth_R)
+        
+        v_kx = smooth_filter * self.J * 100 * k_filter * f * delta_k_complex * self.k[0] / self.k_norm / self.k_norm
+        v_ky = smooth_filter * self.J * 100 * k_filter * f * delta_k_complex * self.k[1] / self.k_norm / self.k_norm
+        v_kz = smooth_filter * self.J * 100 * k_filter * f * delta_k_complex * self.k[2] / self.k_norm / self.k_norm
 
         vx = (jnp.fft.irfftn(v_kx) * self.V / self.dV)
         vy = (jnp.fft.irfftn(v_ky) * self.V / self.dV)

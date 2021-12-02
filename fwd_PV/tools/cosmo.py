@@ -32,6 +32,6 @@ def camb_PS():
     #Non-Linear spectra (Halofit)
     pars.NonLinear = model.NonLinear_both
     results.calc_power_spectra(pars)
-    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-2, maxkh=5, npoints = 2000)
+    kh, _, pk = results.get_matter_power_spectrum(minkh=1e-3, maxkh=5, npoints = 3000)
     
     return kh, pk[0]

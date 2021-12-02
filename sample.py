@@ -49,12 +49,13 @@ if(restart_flag=='INIT'):
 elif(restart_flag=='RESUME'):
     print("Restarting run....")
     f_restart = h5.File(savedir+'/restart.h5', 'r')
-    N_START = f_restart['N_STEP'].value
+    N_START = f_restart['N_STEP'][()]
     delta_k = f_restart['delta_k'][:]
     try:
         scale   = f_restart['scale'][:]
     except:
         scale = jnp.ones(N_CAT)
+        
     f_restart.close()
 
 mass_matrix = 2. * VelocityBox.V / VelocityBox.Pk_3d
@@ -64,7 +65,7 @@ accepted = 0
 
 if(sample_scale):
     scale_sampler = SliceSampler(N_CAT, VelocityBox.log_lkl_scale, verbose=True)
-    scale_sampler.set_cov(np.diag(0.01 * np.ones(N_CAT)))
+    scale_sampler.set_cov(np.diag(1e-4 * np.ones(N_CAT)))    
 dt = dt
 
 for i in range(N_START, N_START + N_MCMC):
@@ -86,6 +87,6 @@ for i in range(N_START, N_START + N_MCMC):
     if(sample_scale):
         print("Sampling scale...")
         scale, _, _ = scale_sampler.sample_one_step(scale, lnprob_kwargs={"delta_k": delta_k})
-        print("scale: " + str(scale))
+        print("scale: " + str(scale))                
     if(i%N_RESTART==0):
         io.write_restart_file(savedir, delta_k, i, scale)
