@@ -35,10 +35,15 @@ class ForwardModelledVelocityBox:
 
     def symmetrize(self, delta_k):
         delta_k = self.Fourier_mask[jnp.newaxis] * delta_k
-        delta_k = jax.ops.index_update(delta_k, self.update_index_real_0,  jnp.take(jnp.flip(delta_k[0, 1:(self.N_Z-1), :, 0], axis=0), self.flip_indices, axis=1))
-        delta_k = jax.ops.index_update(delta_k, self.update_index_real_ny,  jnp.take(jnp.flip(delta_k[0, 1:(self.N_Z-1), :, self.N_Z - 1], axis=0), self.flip_indices, axis=1))
-        delta_k = jax.ops.index_update(delta_k, self.update_index_imag_0,  -jnp.take(jnp.flip(delta_k[1, 1:(self.N_Z-1), :, 0], axis=0), self.flip_indices, axis=1))
-        delta_k = jax.ops.index_update(delta_k, self.update_index_imag_ny,  -jnp.take(jnp.flip(delta_k[1, 1:(self.N_Z-1), :, self.N_Z - 1], axis=0), self.flip_indices, axis=1))
+        delta_k = delta_k.at[self.update_index_real_0].set(
+            jnp.take(jnp.flip(delta_k[0, 1:(self.N_Z-1), :, 0], axis=0), self.flip_indices, axis=1)
+        )
+        delta_k = delta_k.at[self.update_index_real_ny].set(
+            jnp.take(jnp.flip(delta_k[0, 1:(self.N_Z-1), :, self.N_Z - 1], axis=0), self.flip_indices, axis=1)
+        )
+        delta_k = delta_k.at[self.update_index_imag_0].set(
+            -jnp.take(jnp.flip(delta_k[1, 1:(self.N_Z-1), :, 0], axis=0), self.flip_indices, axis=1)
+        )
         return delta_k
         
     def generate_delta_k(self):
@@ -162,10 +167,10 @@ class ForwardModelledVelocityBox:
                 for k in zero_ny_ind:
                     self.prior_mask[0,i,j,k] = 0.5 * self.prior_mask[0,i,j,k]
                     self.prior_mask[1,i,j,k] = 0.
-        self.update_index_real_0  = jax.ops.index[0, self.N_Z:, :, 0]
-        self.update_index_real_ny = jax.ops.index[0, self.N_Z:, :, self.N_Z - 1]
-        self.update_index_imag_0  = jax.ops.index[1, self.N_Z:, :, 0]
-        self.update_index_imag_ny = jax.ops.index[1, self.N_Z:, :, self.N_Z - 1]
+        self.update_index_real_0  = jnp.index_exp[0, self.N_Z:, :, 0]
+        self.update_index_real_ny = jnp.index_exp[0, self.N_Z:, :, self.N_Z - 1]
+        self.update_index_imag_0  = jnp.index_exp[1, self.N_Z:, :, 0]
+        self.update_index_imag_ny = jnp.index_exp[1, self.N_Z:, :, self.N_Z - 1]
         
         flip_indices = -np.arange(self.N_SIDE)
         flip_indices[self.N_Z - 1] = -flip_indices[self.N_Z - 1]
