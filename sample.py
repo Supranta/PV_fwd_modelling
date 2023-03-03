@@ -90,3 +90,15 @@ for i in range(N_START, N_START + N_MCMC):
         print("scale: " + str(scale))                
     if(i%N_RESTART==0):
         io.write_restart_file(savedir, delta_k, i, scale)
+        
+        
+"""
+NOTES
+
+Data from
+https://arizona.app.box.com/s/w6qs5wknnqtznaexc33yvyvybmhh6kco
+
+Can make Gaussian mocks using
+https://github.com/Supranta/Pantheon-plus/blob/master/LinearMocks/make_gaussian_mock.py
+but may be in different format
+"""

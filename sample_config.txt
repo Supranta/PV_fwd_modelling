@@ -1,0 +1,30 @@
+[BOX]
+N_GRID = 128
+L_BOX = 500.
+likelihood = fwd_lkl
+coord = equatorial
+
+[FWD_LKL]
+density_file = data/velmass_mock/delta_halo_256_500Mpc.npy
+N_BOX_sim = 256
+L_BOX_sim = 500.
+R_lim     = 245.
+
+[MCMC]
+N_MCMC     = 100
+dt         = 0.1
+N_LEAPFROG = 10
+sample_scale = false
+
+[IO]
+savedir = runs/velmass/velmass_mock_fwd_lkl
+N_SAVE = 20
+N_RESTART = 20
+
+[DATA]
+N_CAT     = 1
+datafile0 = data/velmass_mock/velmass_mock_0_07_err_17_7_maglim.h5
+
+[ANALYSIS]
+process_3d_v_delta = false
+calculate_mean_std = true

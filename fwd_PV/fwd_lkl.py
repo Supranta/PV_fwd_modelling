@@ -66,9 +66,9 @@ class ForwardLikelihoodBox(ForwardModelledVelocityBox):
         index_end   = jnp.cumsum(self.data_len)
         index_start = jnp.hstack([jnp.array([0]),index_end[:-1]])
         for i in range(self.N_CAT):
-            index_slice = jax.ops.index[index_start[i]:index_end[i]]
+            index_slice = jnp.index_exp[index_start[i]:index_end[i]]
             scale_updated = scale[i] * scale_arr[index_slice]
-            scale_arr = jax.ops.index_update(scale_arr, index_slice, scale_updated)
+            scale_arr = scale_arr.at[index_slice].set(scale_updated)
         return scale_arr
     
 #     @partial(jit, static_argnums=(0,))
