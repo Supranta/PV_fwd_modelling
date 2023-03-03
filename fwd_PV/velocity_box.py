@@ -174,4 +174,5 @@ class ForwardModelledVelocityBox:
         
         flip_indices = -np.arange(self.N_SIDE)
         flip_indices[self.N_Z - 1] = -flip_indices[self.N_Z - 1]
-        self.flip_indices = flip_indices.tolist()
+#        self.flip_indices = flip_indices.tolist()
+        self.flip_indices = jnp.array(flip_indices.tolist())
